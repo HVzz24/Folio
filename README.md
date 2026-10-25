@@ -12,6 +12,16 @@ A private, local-first CV editor built with React, TypeScript, Vite, Zustand, Zo
 
 Use `npm run build` to create the production bundle in `dist`. To make a PDF, choose **Export PDF** and select **Save as PDF** in the browser print dialog. Keep the print scale at 100% and turn off browser headers and footers for a clean page. The PDF is rendered from selectable document text, not a screenshot. Use **Export JSON** to create a backup or **Import** to restore one.
 
+## GitHub Pages live preview
+
+The included GitHub Actions workflow builds and deploys the site whenever changes are pushed to `main`. For this repository, the site URL is `https://hvzz24.github.io/Folio/`.
+
+1. In the GitHub repository, open **Settings → Pages** and set **Build and deployment → Source** to **GitHub Actions**.
+2. Push the project to the `main` branch, or run **Deploy GitHub Pages** from the repository's **Actions** tab.
+3. Wait for the workflow's build and deploy jobs to finish, then open the site URL above.
+
+GitHub Pages is public. The published app starts with fictional Jane Doe sample data. Each visitor's CV edits are kept in that visitor's own browser storage; the app has no server or external API and does not send CV contents to GitHub. Never commit real CVs, personal exports, or private data.
+
 ## Local data
 
 The browser saves edits automatically in local storage. Clearing this site's browser data also clears the saved CV, so export a JSON backup when needed. Imported files are validated before replacing the current document. The default document data lives in `src/data/defaultResume.ts` and uses fictional Jane Doe sample content; headings, entries, subsections, and design settings are editable in the app.
