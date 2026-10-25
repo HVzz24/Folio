@@ -56,6 +56,11 @@ button:disabled { cursor: default; opacity: .35; }
 .field input:focus, .field textarea:focus, .select-setting select:focus, .subsection-heading-edit input:focus, .bullet-edit-row input:focus, .list-edit-row input:focus, .add-section-form input:focus { border-color: #91a99a; box-shadow: 0 0 0 2px #dfe9e2; }
 .field textarea { resize: vertical; line-height: 1.5; }
 .field input[type="file"] { padding: 6px; font-size: 9px; }
+.field input[type="month"] { min-height: 31px; padding: 6px 8px; }
+.date-legacy-note { color: #9a7959; font-size: 8px; font-weight: 400; line-height: 1.35; }
+.current-date-toggle { grid-column: 1 / -1; display: flex; align-items: center; gap: 7px; color: #718078; font-size: 9px; font-weight: 500; }
+.current-date-toggle input { width: 14px; height: 14px; margin: 0; accent-color: #708b78; }
+.entry-date-actions { display: flex; justify-content: flex-end; min-height: 24px; }
 .count-row { grid-column: 1 / -1; display: flex; justify-content: flex-end; gap: 12px; margin-top: -4px; color: #a0a9a5; font-size: 9px; }
 .summary-toggle { grid-column: 1 / -1; display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 9px 10px; border: 1px solid #e6eae8; border-radius: 5px; background: #f8faf8; }
 .summary-toggle strong, .summary-toggle small { display: block; }
@@ -326,6 +331,9 @@ button:disabled { cursor: default; opacity: .35; }
 .app-shell[data-theme="dark"] .bullet-edit-row input::placeholder,
 .app-shell[data-theme="dark"] .list-edit-row input::placeholder,
 .app-shell[data-theme="dark"] .add-section-form input::placeholder { color: #69796e; }
+.app-shell[data-theme="dark"] .date-legacy-note { color: #d3b481; }
+.app-shell[data-theme="dark"] .current-date-toggle { color: #b5c2b8; }
+.app-shell[data-theme="dark"] .current-date-toggle input { accent-color: #c3a875; }
 .app-shell[data-theme="dark"] .field input:focus,
 .app-shell[data-theme="dark"] .field textarea:focus,
 .app-shell[data-theme="dark"] .select-setting select:focus,

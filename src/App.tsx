@@ -7,6 +7,7 @@ import {
 } from 'lucide-react'
 import { downloadJson } from './lib/storage'
 import { analyzeResume, type AtsAnalysis } from './lib/atsAnalysis'
+import { formatResumeDate, toMonthInputValue } from './lib/dates'
 import { resumeSchema, type ResumeItem, type ResumeSection } from './types/resume'
 import { useResumeStore } from './store/resumeStore'
 
@@ -26,6 +27,26 @@ function Field({ label, value, onChange, multiline = false, placeholder = '' }: 
       {multiline
         ? <textarea value={value} placeholder={placeholder} onChange={(event) => onChange(event.target.value)} rows={3} />
         : <input value={value} placeholder={placeholder} onChange={(event) => onChange(event.target.value)} />}
+    </label>
+  )
+}
+
+function DatePickerField({ label, value, onChange }: {
+  label: string
+  value: string
+  onChange: (value: string) => void
+}) {
+  const monthValue = toMonthInputValue(value)
+  return (
+    <label className="field">
+      <span>{label}</span>
+      <input
+        type="month"
+        aria-label={label}
+        value={monthValue}
+        onChange={(event) => onChange(event.target.value)}
+      />
+      {value && !monthValue && <small className="date-legacy-note">Saved value: {value}. Choose a month to replace it.</small>}
     </label>
   )
 }
@@ -58,7 +79,21 @@ function getContactHref(kind: 'email' | 'phone' | 'location' | 'linkedin' | 'por
 
 function EntryEditor({ section, item, index }: { section: ResumeSection; item: ResumeItem; index: number }) {
   const { updateItem, deleteItem, moveItem, addBullet, updateBullet, deleteBullet, moveBullet } = useResumeStore()
-  const fields = Object.entries(item.fields)
+  const { start = '', end = '', ...regularFields } = item.fields
+  const hasDates = Object.hasOwn(item.fields, 'start') || Object.hasOwn(item.fields, 'end')
+  const isCurrent = end.toLowerCase() === 'present'
+
+  function updateDates(updates: { start?: string; end?: string }) {
+    updateItem(section.id, item.id, { fields: { ...item.fields, ...updates } })
+  }
+
+  function removeDates() {
+    const fields = { ...item.fields }
+    delete fields.start
+    delete fields.end
+    updateItem(section.id, item.id, { fields })
+  }
+
   return (
     <div className="entry-card">
       <div className="entry-topline">
@@ -69,7 +104,7 @@ function EntryEditor({ section, item, index }: { section: ResumeSection; item: R
         <MiniButton title="Delete entry" danger onClick={() => deleteItem(section.id, item.id)}><Trash2 size={14} /></MiniButton>
       </div>
       <div className="form-grid">
-        {fields.map(([key, value]) => (
+        {Object.entries(regularFields).map(([key, value]) => (
           <Field
             key={key}
             label={FIELD_LABELS[key] ?? key}
@@ -78,6 +113,19 @@ function EntryEditor({ section, item, index }: { section: ResumeSection; item: R
             onChange={(next) => updateItem(section.id, item.id, { fields: { ...item.fields, [key]: next } })}
           />
         ))}
+        {hasDates && <>
+          <DatePickerField label="Start date" value={start} onChange={(value) => updateDates({ start: value })} />
+          {!isCurrent && <DatePickerField label="End date" value={end} onChange={(value) => updateDates({ end: value })} />}
+          <label className="current-date-toggle">
+            <input type="checkbox" checked={isCurrent} onChange={(event) => updateDates({ end: event.target.checked ? 'Present' : '' })} />
+            <span>Ongoing / present</span>
+          </label>
+        </>}
+      </div>
+      <div className="entry-date-actions">
+        {hasDates
+          ? <button className="text-action" type="button" onClick={removeDates}><X size={13} /> Remove dates</button>
+          : <button className="text-action" type="button" onClick={() => updateDates({ start: '', end: '' })}><Plus size={13} /> Add date range</button>}
       </div>
       <div className="bullet-editor">
         <div className="subsection-title"><span>Bullet points</span><button className="text-action" onClick={() => addBullet(section.id, item.id)}><Plus size={13} /> Add bullet</button></div>
@@ -327,7 +375,7 @@ function ResumePreview({ zoom, containerRef }: { zoom: number; containerRef?: Re
                   : section.type === 'experience'
                     ? item.fields.position
                     : item.fields.category
-                const date = [item.fields.start, item.fields.end].filter(Boolean).join(' – ')
+                const date = [item.fields.start, item.fields.end].filter(Boolean).map(formatResumeDate).join(' – ')
                 const details = Object.entries(item.fields).filter(([key, value]) =>
                   value && !['position', 'degree', 'name', 'company', 'institution', 'category', 'start', 'end', 'location', 'grade'].includes(key),
                 )

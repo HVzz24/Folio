@@ -33,6 +33,7 @@ The sample is safe to publish, but a browser's existing local storage is not par
 - Edit profile, summary, education, experience, projects, list-style subsections, and custom sections.
 - Rename, hide, reorder (drag), add, and delete sections and subsections.
 - Add, remove, and reorder entries, list items, and achievement bullets.
+- Pick month-and-year start/end dates for dated entries, mark an entry as ongoing, or add/remove a date range on project and custom entries.
 - Live document preview, zoom, typography, page size, margins, spacing, and column controls.
 - Persistent light and dark editor themes; the resume page stays white for accurate preview and printing.
 - Browser print / save as PDF, validated JSON import/export, and a reset-to-default action.
