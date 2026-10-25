@@ -1,0 +1,37 @@
+# Dependencies and generated builds
+node_modules/
+dist/
+coverage/
+
+# Local environment and secrets
+.env
+.env.*
+!.env.example
+
+# Personal resume documents and exports
+*.pdf
+*.doc
+*.docx
+*.tex
+*.resume.json
+resume*.json
+*resume*.json
+*cv*.json
+resume-backup*.json
+backups/
+exports/
+
+# LaTeX build artifacts
+*.aux
+*.fdb_latexmk
+*.fls
+*.log
+*.out
+*.synctex.gz
+
+# Local tooling and operating-system files
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+desktop.ini

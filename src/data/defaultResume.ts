@@ -1,0 +1,172 @@
+import type { Resume } from '../types/resume'
+
+export const defaultResume: Resume = {
+  profile: {
+    name: 'Jane Doe',
+    title: 'Software Developer',
+    phone: '(555) 010-1234',
+    email: 'jane.doe@example.com',
+    location: 'Example City',
+    linkedin: 'linkedin.com/in/jane-doe',
+    portfolio: 'jane-doe.example.com',
+    photo: '',
+    summaryEnabled: true,
+    hyperlinksEnabled: true,
+    summary:
+      'Software developer with experience building web applications and collaborating across teams. Skilled in frontend development, API integration, and turning product requirements into reliable, accessible software.',
+  },
+  sections: [
+    {
+      id: 'education',
+      heading: 'Education',
+      enabled: true,
+      type: 'education',
+      items: [
+        {
+          id: 'edu-masters',
+          fields: {
+            institution: 'Example University',
+            location: 'Example City',
+            degree: 'Master of Information Technology',
+            grade: 'GPA 3.8/4.0',
+            start: 'Aug 2023',
+            end: 'May 2025',
+            description: '',
+          },
+          bullets: [],
+        },
+        {
+          id: 'edu-bachelors',
+          fields: {
+            institution: 'Sample State University',
+            location: 'Example City',
+            degree: 'Bachelor of Computer Science',
+            grade: 'GPA 3.6/4.0',
+            start: 'Aug 2019',
+            end: 'May 2023',
+            description: '',
+          },
+          bullets: [],
+        },
+      ],
+      subsections: [],
+    },
+    {
+      id: 'experience',
+      heading: 'Professional Experience',
+      enabled: true,
+      type: 'experience',
+      items: [
+        {
+          id: 'exp-developer',
+          fields: {
+            company: 'Example Software Company',
+            position: 'Software Developer',
+            location: 'Example City',
+            start: 'Jun 2023',
+            end: 'Present',
+            description: '',
+          },
+          bullets: [
+            'Developed accessible web application features using React, TypeScript, and reusable UI components.',
+            'Collaborated with design and product teams to deliver improvements based on user feedback.',
+            'Improved application reliability by adding automated tests and resolving reported defects.',
+          ],
+        },
+        {
+          id: 'exp-intern',
+          fields: {
+            company: 'Sample Technology Group',
+            position: 'Software Engineering Intern',
+            location: 'Example City',
+            start: 'Jan 2022',
+            end: 'May 2022',
+            description: '',
+          },
+          bullets: [
+            'Built internal dashboard components and integrated them with documented REST APIs.',
+            'Wrote SQL queries to validate application data and support routine reporting.',
+          ],
+        },
+      ],
+      subsections: [],
+    },
+    {
+      id: 'projects',
+      heading: 'Selected Projects',
+      enabled: true,
+      type: 'projects',
+      items: [
+        {
+          id: 'project-portfolio',
+          fields: { name: 'Portfolio Website', category: 'Responsive web application' },
+          bullets: [
+            'Designed and developed a responsive portfolio using React, TypeScript, and CSS.',
+            'Improved accessibility with semantic HTML, keyboard navigation, and clear focus states.',
+          ],
+        },
+        {
+          id: 'project-task-manager',
+          fields: { name: 'Task Manager', category: 'Full-stack productivity application' },
+          bullets: [
+            'Created a task management app with a React interface and a Node.js API.',
+            'Stored application data in PostgreSQL and documented the API for future contributors.',
+          ],
+        },
+      ],
+      subsections: [],
+    },
+    {
+      id: 'additional',
+      heading: 'Skills & Certifications',
+      enabled: true,
+      type: 'list',
+      items: [],
+      subsections: [
+        {
+          id: 'competencies',
+          heading: 'Core Competencies',
+          items: ['Problem Solving', 'Team Collaboration', 'Technical Documentation', 'Project Planning'],
+        },
+        {
+          id: 'technical-skills',
+          heading: 'Technical Skills',
+          items: ['TypeScript', 'JavaScript', 'React.js', 'Node.js', 'SQL', 'PostgreSQL', 'Git/GitHub', 'HTML', 'CSS'],
+        },
+        {
+          id: 'languages',
+          heading: 'Languages',
+          items: ['English (Professional)', 'Spanish (Conversational)'],
+        },
+        {
+          id: 'certifications',
+          heading: 'Certifications & Training',
+          items: ['Example Cloud Fundamentals Certificate', 'Sample Web Accessibility Course'],
+        },
+      ],
+    },
+  ],
+  settings: {
+    pageSize: 'Letter',
+    layout: 'single',
+    fontFamily: 'Carlito',
+    nameFontSize: 25,
+    titleFontSize: 10,
+    headingFontSize: 12,
+    subheadingFontSize: 10,
+    bodyFontSize: 9.5,
+    contactFontSize: 9,
+    lineHeight: 1.2,
+    letterSpacing: 0,
+    marginTop: 10,
+    marginBottom: 12,
+    marginSide: 11.5,
+    sectionSpacing: 8,
+    bulletSpacing: 0,
+    paragraphSpacing: 4,
+    dividerThickness: 0.5,
+    alignment: 'left',
+    fontWeight: '400',
+    showDivider: true,
+  },
+}
