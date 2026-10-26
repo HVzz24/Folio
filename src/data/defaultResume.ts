@@ -17,6 +17,14 @@ export const defaultResume: Resume = {
   },
   sections: [
     {
+      id: 'professional-summary',
+      heading: 'Professional Summary',
+      enabled: true,
+      type: 'summary',
+      items: [],
+      subsections: [],
+    },
+    {
       id: 'education',
       heading: 'Education',
       enabled: true,
@@ -34,6 +42,7 @@ export const defaultResume: Resume = {
             description: '',
           },
           bullets: [],
+          details: [],
         },
         {
           id: 'edu-bachelors',
@@ -47,6 +56,7 @@ export const defaultResume: Resume = {
             description: '',
           },
           bullets: [],
+          details: [],
         },
       ],
       subsections: [],
@@ -72,6 +82,7 @@ export const defaultResume: Resume = {
             'Collaborated with design and product teams to deliver improvements based on user feedback.',
             'Improved application reliability by adding automated tests and resolving reported defects.',
           ],
+          details: [],
         },
         {
           id: 'exp-intern',
@@ -87,6 +98,7 @@ export const defaultResume: Resume = {
             'Built internal dashboard components and integrated them with documented REST APIs.',
             'Wrote SQL queries to validate application data and support routine reporting.',
           ],
+          details: [],
         },
       ],
       subsections: [],
@@ -95,7 +107,7 @@ export const defaultResume: Resume = {
       id: 'projects',
       heading: 'Selected Projects',
       enabled: true,
-      type: 'projects',
+      type: 'custom',
       items: [
         {
           id: 'project-portfolio',
@@ -104,6 +116,7 @@ export const defaultResume: Resume = {
             'Designed and developed a responsive portfolio using React, TypeScript, and CSS.',
             'Improved accessibility with semantic HTML, keyboard navigation, and clear focus states.',
           ],
+          details: [],
         },
         {
           id: 'project-task-manager',
@@ -112,6 +125,7 @@ export const defaultResume: Resume = {
             'Created a task management app with a React interface and a Node.js API.',
             'Stored application data in PostgreSQL and documented the API for future contributors.',
           ],
+          details: [],
         },
       ],
       subsections: [],
@@ -120,7 +134,7 @@ export const defaultResume: Resume = {
       id: 'additional',
       heading: 'Skills & Certifications',
       enabled: true,
-      type: 'list',
+      type: 'custom',
       items: [],
       subsections: [
         {

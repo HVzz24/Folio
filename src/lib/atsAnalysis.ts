@@ -132,9 +132,9 @@ function getResumeText(resume: Resume): { all: string; experience: string } {
       parts.push(subsection.heading, ...subsection.items)
     }
     for (const item of section.items) {
-      const entryText = [...Object.values(item.fields), ...item.bullets].join(' ')
+      const entryText = [...Object.values(item.fields), ...item.bullets, ...item.details.flatMap(({ label, content }) => [label, content])].join(' ')
       parts.push(entryText)
-      if (section.type === 'experience' || section.type === 'projects') experienceParts.push(entryText)
+      if (section.type === 'experience' || section.id === 'projects') experienceParts.push(entryText)
     }
   }
 

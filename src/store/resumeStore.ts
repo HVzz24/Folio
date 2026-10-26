@@ -1,6 +1,6 @@
 import { create } from 'zustand'
 import { defaultResume } from '../data/defaultResume'
-import { loadResume, saveResume } from '../lib/storage'
+import { loadResume, normalizeResume, saveResume } from '../lib/storage'
 import type { Resume, ResumeItem, ResumeSection, ResumeSubsection } from '../types/resume'
 
 interface ResumeStore {
@@ -72,8 +72,9 @@ export const useResumeStore = create<ResumeStore>((set) => ({
                   ? { institution: '', location: '', degree: '', grade: '', start: '', end: '', description: '' }
                   : section.type === 'experience'
                     ? { company: '', position: '', location: '', start: '', end: '', description: '' }
-                    : { name: '', category: '', description: '', technologies: '' },
+                    : { name: '', category: '', description: '' },
               bullets: [],
+              details: [],
             },
           ],
         })),
@@ -199,7 +200,11 @@ export const useResumeStore = create<ResumeStore>((set) => ({
       }),
     })),
   deleteSection: (sectionId) =>
-    set((state) => ({ resume: persist({ ...state.resume, sections: state.resume.sections.filter((section) => section.id !== sectionId) }) })),
+    set((state) => {
+      const section = state.resume.sections.find((item) => item.id === sectionId)
+      if (section && ['summary', 'education', 'experience'].includes(section.type)) return state
+      return { resume: persist({ ...state.resume, sections: state.resume.sections.filter((item) => item.id !== sectionId) }) }
+    }),
   moveSection: (sectionId, targetId) =>
     set((state) => {
       const sections = [...state.resume.sections]
@@ -210,6 +215,6 @@ export const useResumeStore = create<ResumeStore>((set) => ({
       sections.splice(targetIndex, 0, section)
       return { resume: persist({ ...state.resume, sections }) }
     }),
-  replaceResume: (resume) => set({ resume: persist(resume) }),
+  replaceResume: (resume) => set({ resume: persist(normalizeResume(resume)) }),
   resetResume: () => set({ resume: persist(structuredClone(defaultResume)) }),
 }))

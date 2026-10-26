@@ -15,7 +15,6 @@ const FIELD_LABELS: Record<string, string> = {
   institution: 'Institution', location: 'Location', degree: 'Degree',
   grade: 'GPA / grade', start: 'Start date', end: 'End date', description: 'Description',
   company: 'Company', position: 'Position', name: 'Project name', category: 'Category',
-  technologies: 'Technologies',
 }
 
 function Field({ label, value, onChange, multiline = false, placeholder = '' }: {
@@ -82,6 +81,7 @@ function EntryEditor({ section, item, index }: { section: ResumeSection; item: R
   const { start = '', end = '', ...regularFields } = item.fields
   const hasDates = Object.hasOwn(item.fields, 'start') || Object.hasOwn(item.fields, 'end')
   const isCurrent = end.toLowerCase() === 'present'
+  const supportsDetails = section.type === 'custom'
 
   function updateDates(updates: { start?: string; end?: string }) {
     updateItem(section.id, item.id, { fields: { ...item.fields, ...updates } })
@@ -113,6 +113,34 @@ function EntryEditor({ section, item, index }: { section: ResumeSection; item: R
             onChange={(next) => updateItem(section.id, item.id, { fields: { ...item.fields, [key]: next } })}
           />
         ))}
+        {supportsDetails && <div className="field-wide">
+          <div className="subsection-title"><span>Custom details</span><button className="text-action" type="button" onClick={() => updateItem(section.id, item.id, {
+            details: [...item.details, { id: crypto.randomUUID(), label: '', content: '' }],
+          })}><Plus size={13} /> Add detail</button></div>
+          {item.details.map((detail) => (
+            <div className="form-grid" key={detail.id}>
+              <Field
+                label="Detail title (optional)"
+                value={detail.label}
+                placeholder="e.g. Technologies, Tools, or Role"
+                onChange={(value) => updateItem(section.id, item.id, {
+                  details: item.details.map((entry) => entry.id === detail.id ? { ...entry, label: value } : entry),
+                })}
+              />
+              <Field
+                label="Detail content"
+                value={detail.content}
+                multiline
+                onChange={(value) => updateItem(section.id, item.id, {
+                  details: item.details.map((entry) => entry.id === detail.id ? { ...entry, content: value } : entry),
+                })}
+              />
+              <MiniButton title="Remove detail" danger onClick={() => updateItem(section.id, item.id, {
+                details: item.details.filter((entry) => entry.id !== detail.id),
+              })}><X size={13} /></MiniButton>
+            </div>
+          ))}
+        </div>}
         {hasDates && <>
           <DatePickerField label="Start date" value={start} onChange={(value) => updateDates({ start: value })} />
           {!isCurrent && <DatePickerField label="End date" value={end} onChange={(value) => updateDates({ end: value })} />}
@@ -179,11 +207,16 @@ function ContentSidebar({ active, setActive, dragId, setDragId }: {
   const store = useResumeStore()
   const [newHeading, setNewHeading] = useState('')
   const profile = resume.profile
-  const words = profile.summary.trim() ? profile.summary.trim().split(/\s+/).length : 0
 
   function moveDropped(targetId: string) {
     if (dragId && dragId !== targetId) store.moveSection(dragId, targetId)
     setDragId(null)
+  }
+
+  function toggleSection(section: ResumeSection) {
+    const enabled = !section.enabled
+    store.updateSection(section.id, { enabled })
+    if (section.type === 'summary') store.updateProfile('summaryEnabled', enabled)
   }
 
   return (
@@ -208,14 +241,6 @@ function ContentSidebar({ active, setActive, dragId, setDragId }: {
               <Field label="LinkedIn" value={profile.linkedin} onChange={(value) => store.updateProfile('linkedin', value)} />
               <Field label="Portfolio" value={profile.portfolio} onChange={(value) => store.updateProfile('portfolio', value)} />
               <label className="summary-toggle">
-                <span><strong>Professional summary</strong><small>Show this section in preview and PDF</small></span>
-                <input
-                  type="checkbox"
-                  checked={profile.summaryEnabled}
-                  onChange={(event) => store.updateProfile('summaryEnabled', event.target.checked)}
-                />
-              </label>
-              <label className="summary-toggle">
                 <span><strong>Clickable hyperlinks</strong><small>Link email, phone, LinkedIn & portfolio</small></span>
                 <input
                   type="checkbox"
@@ -232,8 +257,6 @@ function ContentSidebar({ active, setActive, dragId, setDragId }: {
                 reader.readAsDataURL(file)
               }} /></label>
               {profile.photo && <button className="text-action" onClick={() => store.updateProfile('photo', '')}><X size={13} /> Remove photo</button>}
-              <Field label="Summary content" value={profile.summary} multiline onChange={(value) => store.updateProfile('summary', value)} />
-              <div className="count-row"><span>{profile.summary.length} characters</span><span>{words} words</span></div>
             </div>
           </div>}
         </section>
@@ -257,22 +280,25 @@ function ContentSidebar({ active, setActive, dragId, setDragId }: {
                 onDragEnd={() => setDragId(null)}
               ><GripVertical size={15} /></span>
               <button className="accordion-trigger section-trigger" onClick={() => setActive(active === section.id ? '' : section.id)}>
-                <span className="accordion-name">{section.heading || 'Untitled section'}<small>{section.type === 'list' ? `${section.subsections.length} subsections` : `${section.items.length} entries`}</small></span>
+                <span className="accordion-name">{section.heading || 'Untitled section'}<small>{section.type === 'summary' ? 'Summary statement' : `${section.items.length} entries`}</small></span>
                 {active === section.id ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
               </button>
-              <MiniButton title={section.enabled ? 'Hide section' : 'Show section'} onClick={() => store.updateSection(section.id, { enabled: !section.enabled })}>{section.enabled ? <Eye size={15} /> : <EyeOff size={15} />}</MiniButton>
+              <MiniButton title={section.enabled ? 'Hide section' : 'Show section'} onClick={() => toggleSection(section)}>{section.enabled ? <Eye size={15} /> : <EyeOff size={15} />}</MiniButton>
             </div>
             {active === section.id && <div className="accordion-content section-content">
-              <Field label="Section heading" value={section.heading} onChange={(value) => store.updateSection(section.id, { heading: value })} />
-              {section.type === 'list'
-                ? <ListSectionEditor section={section} />
+              {section.type === 'summary'
+                ? <>
+                  <Field label="Summary content" value={profile.summary} multiline onChange={(value) => store.updateProfile('summary', value)} />
+                  <div className="count-row"><span>{profile.summary.length} characters</span><span>{profile.summary.trim() ? profile.summary.trim().split(/\s+/).length : 0} words</span></div>
+                </>
                 : <>
+                  {section.type === 'custom' && <Field label="Section heading" value={section.heading} onChange={(value) => store.updateSection(section.id, { heading: value })} />}
                   {section.items.map((item, itemIndex) => <EntryEditor key={item.id} section={section} item={item} index={itemIndex} />)}
-                  <button className="outline-action" onClick={() => store.addItem(section.id)}><Plus size={14} /> Add {section.type === 'education' ? 'education' : section.type === 'experience' ? 'position' : 'project'}</button>
+                  <button className="outline-action" onClick={() => store.addItem(section.id)}><Plus size={14} /> Add {section.type === 'education' ? 'education' : section.type === 'experience' ? 'position' : 'entry'}</button>
                   <div className="subsections"><ListSectionEditor section={section} /></div>
                 </>}
               {section.type === 'custom' && section.items.length === 0 && <p className="helper-copy">Start with an entry or create titled subsections and list items.</p>}
-              <button className="remove-section" onClick={() => store.deleteSection(section.id)}><Trash2 size={14} /> Delete section</button>
+              {section.type === 'custom' && <button className="remove-section" onClick={() => store.deleteSection(section.id)}><Trash2 size={14} /> Delete section</button>}
             </div>}
             {index !== resume.sections.length - 1 && <div className="section-separator" />}
           </section>
@@ -346,20 +372,22 @@ function ResumePreview({ zoom, containerRef }: { zoom: number; containerRef?: Re
               })}</div>}
             </div>
           </header>
-          {profile.summaryEnabled && profile.summary.trim() && <section className="resume-summary">
-            <p>{profile.summary}</p>
-          </section>}
           <div className={`resume-body ${settings.layout === 'two' ? 'two-column' : ''}`}>
-          {resume.sections.filter((section) => section.enabled).map((section) => (
-            <section className={`resume-section ${section.type === 'list' ? 'resume-list-section' : ''}`} key={section.id}>
+          {resume.sections.filter((section) => section.enabled).map((section) => section.type === 'summary' ? (
+            <section className="resume-section" key={section.id}>
+              {section.heading && <h2>{section.heading}</h2>}
+              {profile.summary.trim() && <p>{profile.summary}</p>}
+            </section>
+          ) : (
+            <section className="resume-section" key={section.id}>
               {section.heading && <h2>{section.heading}</h2>}
               {section.subsections.map((subsection) => (
-                <div className={`resume-subsection ${section.type === 'list' ? 'compact-subsection' : ''}`} key={subsection.id}>
-                  {subsection.heading && <h3>{subsection.heading}{section.type === 'list' ? ': ' : ''}</h3>}
-                  {subsection.items.length > 0 && <ul className={section.type === 'list' ? 'inline-list' : ''}>{subsection.items.filter(Boolean).map((item, index, items) => (
+                <div className="resume-subsection" key={subsection.id}>
+                  {subsection.heading && <h3>{subsection.heading}</h3>}
+                  {subsection.items.length > 0 && <ul>{subsection.items.filter(Boolean).map((item, index) => (
                     <li key={`${subsection.id}-${index}`}>
-                      {section.type !== 'list' && <span className="bullet-prefix" aria-hidden="true">- </span>}
-                      {item}{section.type === 'list' && index < items.length - 1 ? ', ' : ''}
+                      <span className="bullet-prefix" aria-hidden="true">- </span>
+                      {item}
                     </li>
                   ))}</ul>}
                 </div>
@@ -377,19 +405,15 @@ function ResumePreview({ zoom, containerRef }: { zoom: number; containerRef?: Re
                     : item.fields.category
                 const date = [item.fields.start, item.fields.end].filter(Boolean).map(formatResumeDate).join(' – ')
                 const details = Object.entries(item.fields).filter(([key, value]) =>
-                  value && !['position', 'degree', 'name', 'company', 'institution', 'category', 'start', 'end', 'location', 'grade'].includes(key),
+                  value && !['position', 'degree', 'name', 'company', 'institution', 'category', 'start', 'end', 'location', 'grade', 'technologies', 'technologiesLabel'].includes(key),
                 )
-                const isProject = section.type === 'projects'
                 return (
-                  <div className={`resume-entry ${section.type === 'education' ? 'education-entry' : ''} ${section.type === 'experience' ? 'experience-entry' : ''} ${isProject ? 'project-entry' : ''}`} key={item.id}>
+                  <div className={`resume-entry ${section.type === 'education' ? 'education-entry' : ''} ${section.type === 'experience' ? 'experience-entry' : ''}`} key={item.id}>
                     <div className="resume-entry-head">
-                      <div className="resume-entry-title">{isProject
-                        ? <><strong>{title}</strong>{subheading && <><span> | </span><em>{subheading}</em></>}</>
-                        : <strong>{title}</strong>}
-                      </div>
+                      <div className="resume-entry-title"><strong>{title}</strong></div>
                       {date && <span className="resume-date"><span className="resume-print-separator"> | </span>{date}</span>}
                     </div>
-                    {!isProject && (subheading || item.fields.location) && (
+                    {(subheading || item.fields.location) && (
                       <div className="resume-entry-meta">
                         <span>{subheading}</span>
                         {subheading && item.fields.location && <span className="resume-print-separator"> | </span>}
@@ -400,7 +424,9 @@ function ResumePreview({ zoom, containerRef }: { zoom: number; containerRef?: Re
                       <p className="resume-detail">{details.filter(([key]) => key !== 'description').map(([, value]) => value).join(' · ')}</p>
                     )}
                     {item.fields.description && <p className="resume-detail">{item.fields.description}</p>}
-                    {item.fields.technologies && <p className="resume-detail"><strong>Technologies:</strong> {item.fields.technologies}</p>}
+                    {item.details.filter((detail) => detail.content).map((detail) => (
+                      <p className="resume-detail" key={detail.id}>{detail.label.trim() && <><strong>{detail.label.trim()}:</strong> </>}{detail.content}</p>
+                    ))}
                     {item.bullets.filter(Boolean).length > 0 && <ul>{item.bullets.filter(Boolean).map((bullet, index) => <li key={`${item.id}-${index}`}><span className="bullet-prefix" aria-hidden="true">- </span>{bullet}</li>)}</ul>}
                   </div>
                 )
