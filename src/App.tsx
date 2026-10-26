@@ -286,13 +286,13 @@ function ContentSidebar({ active, setActive, dragId, setDragId }: {
               <MiniButton title={section.enabled ? 'Hide section' : 'Show section'} onClick={() => toggleSection(section)}>{section.enabled ? <Eye size={15} /> : <EyeOff size={15} />}</MiniButton>
             </div>
             {active === section.id && <div className="accordion-content section-content">
+              <Field label="Section heading" value={section.heading} onChange={(value) => store.updateSection(section.id, { heading: value })} />
               {section.type === 'summary'
                 ? <>
                   <Field label="Summary content" value={profile.summary} multiline onChange={(value) => store.updateProfile('summary', value)} />
                   <div className="count-row"><span>{profile.summary.length} characters</span><span>{profile.summary.trim() ? profile.summary.trim().split(/\s+/).length : 0} words</span></div>
                 </>
                 : <>
-                  {section.type === 'custom' && <Field label="Section heading" value={section.heading} onChange={(value) => store.updateSection(section.id, { heading: value })} />}
                   {section.items.map((item, itemIndex) => <EntryEditor key={item.id} section={section} item={item} index={itemIndex} />)}
                   <button className="outline-action" onClick={() => store.addItem(section.id)}><Plus size={14} /> Add {section.type === 'education' ? 'education' : section.type === 'experience' ? 'position' : 'entry'}</button>
                   <div className="subsections"><ListSectionEditor section={section} /></div>

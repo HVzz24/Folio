@@ -21,7 +21,7 @@ export function normalizeResume(resume: Resume): Resume {
     }))
   const normalizedSections = resume.sections.map((section) => {
     const standard = standardSections.find(({ type }) => section.type === type)
-    return standard ? { ...section, id: standard.id, heading: standard.heading } : section
+    return standard ? { ...section, id: standard.id } : section
   })
   const sections = [...missingSections, ...normalizedSections]
   const summary = sections.find((section) => section.type === 'summary')
