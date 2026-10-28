@@ -448,11 +448,6 @@ button:disabled { cursor: default; opacity: .35; }
   .print-root .resume-photo { position: static; float: right; }
   .print-root .resume-header.has-photo .resume-header-copy { margin-right: 72px; }
   .print-root .resume-contact { display: block; }
-  .print-root .resume-entry-head { display: block; }
-  .print-root .resume-entry-title { display: inline; }
-  .print-root .resume-date { display: inline; margin-left: .35em; }
-  .print-root .resume-entry-meta { display: block; }
-  .print-root .resume-print-separator { display: inline; }
   .print-root .resume-entry li, .print-root .resume-subsection li { position: static; }
   .resume-header, .resume-entry, .resume-subsection, .resume-section h2 { break-inside: avoid; }
   .resume-section { break-inside: auto; }
