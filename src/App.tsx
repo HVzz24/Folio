@@ -1,6 +1,6 @@
 import { Fragment, useEffect, useRef, useState } from 'react'
 import {
-  AlignCenter, AlignJustify, AlignLeft, ArrowDown, ArrowDownToLine, ArrowUp, Check,
+  AlignCenter, AlignJustify, AlignLeft, ArrowDown, ArrowDownToLine, ArrowUp, Check, ClipboardPaste,
   ChevronDown, ChevronRight, Eye, EyeOff, FileJson2, FileText, GripVertical,
   LayoutGrid, Maximize2, Minus, Moon, Plus, Printer, RotateCcw, Settings2, Sparkles, Sun,
   Trash2, Type, Upload, X,
@@ -8,6 +8,7 @@ import {
 import { downloadJson } from './lib/storage'
 import { analyzeResume, type AtsAnalysis } from './lib/atsAnalysis'
 import { formatResumeDate, toMonthInputValue } from './lib/dates'
+import { parseResumeText } from './lib/resumeParser'
 import { resumeSchema, type ResumeItem, type ResumeSection } from './types/resume'
 import { useResumeStore } from './store/resumeStore'
 
@@ -593,6 +594,93 @@ function AtsAnalysisModal({ resume, onClose }: { resume: ReturnType<typeof useRe
   )
 }
 
+function ResumeTextImportModal({ onClose, onApply }: {
+  onClose: () => void
+  onApply: (parsed: ReturnType<typeof parseResumeText>) => void
+}) {
+  const [source, setSource] = useState('')
+  const [parsed, setParsed] = useState<ReturnType<typeof parseResumeText> | null>(null)
+  const [error, setError] = useState('')
+  const [confirming, setConfirming] = useState(false)
+
+  function parseText(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault()
+    if (!source.trim()) {
+      setError('Tempelkan isi CV terlebih dahulu.')
+      setParsed(null)
+      return
+    }
+
+    const result = parseResumeText(source)
+    if (!result.profile.name && !result.sections.length) {
+      setError('Struktur CV belum terdeteksi. Gunakan heading Markdown seperti # Nama dan ## Pengalaman.')
+      setParsed(null)
+      return
+    }
+    setError('')
+    setConfirming(false)
+    setParsed(result)
+  }
+
+  const itemCount = parsed?.sections.reduce((total, section) => (
+    total + section.items.length + section.subsections.reduce((subsectionTotal, subsection) => subsectionTotal + subsection.items.length, 0)
+  ), 0) ?? 0
+
+  return (
+    <div className="modal-backdrop no-print ats-backdrop resume-import-backdrop" role="presentation" onMouseDown={(event) => {
+      if (event.target === event.currentTarget) onClose()
+    }}>
+      <section className="ats-modal resume-import-modal" role="dialog" aria-modal="true" aria-labelledby="resume-import-title">
+        <header className="ats-modal-header">
+          <div><span className="eyebrow">IMPORT · LOCAL PARSING</span><h2 id="resume-import-title">Paste your final CV</h2></div>
+          <button className="icon-button" type="button" aria-label="Close CV import" onClick={onClose}><X size={17} /></button>
+        </header>
+        <p className="ats-intro">Paste a Markdown-formatted CV. Folio will detect your profile, summary, work history, education, projects, and grouped skills in this browser.</p>
+        <form className="ats-form resume-import-form" onSubmit={parseText}>
+          <label className="field"><span>CV content</span><textarea
+            value={source}
+            onChange={(event) => {
+              setSource(event.target.value)
+              setParsed(null)
+              setError('')
+              setConfirming(false)
+            }}
+            rows={14}
+            required
+            placeholder={'# Full Name\nCity, Country | +1 555 0100 | name@example.com\n\n## PROFESSIONAL SUMMARY\nYour summary...\n\n## EXPERIENCE\n### Company — Location\n**Role** | *Jan 2023 – Present*\n- Achievement or responsibility'}
+          /></label>
+          {error && <p className="resume-import-error" role="alert">{error}</p>}
+          <div className="ats-form-footer">
+            <span>CV text is parsed locally; it is not uploaded.</span>
+            <button className="export-button" type="submit"><ClipboardPaste size={15} /> Parse CV</button>
+          </div>
+        </form>
+        {parsed && <div className="resume-import-review" aria-live="polite">
+          <div className="resume-import-counts">
+            <div><strong>{parsed.profile.name || 'Name not found'}</strong><span>Profile</span></div>
+            <div><strong>{parsed.sections.length}</strong><span>Sections</span></div>
+            <div><strong>{itemCount}</strong><span>Entries & skills</span></div>
+          </div>
+          <ul className="resume-import-sections">{parsed.sections.map((section) => {
+            const sectionItems = section.items.length + section.subsections.reduce((total, subsection) => total + subsection.items.length, 0)
+            return <li key={section.id}><span>{section.heading}</span><small>{section.type === 'summary' ? 'Summary' : `${section.subsections.length ? `${section.subsections.length} groups · ` : ''}${sectionItems} items`}</small></li>
+          })}</ul>
+          {parsed.warnings.length > 0 && <div className="resume-import-warnings"><strong>Check after import</strong><ul>{parsed.warnings.map((warning) => <li key={warning}>{warning}</li>)}</ul></div>}
+          {confirming
+            ? <div className="resume-import-confirm" role="alert">
+              <p>This replaces the current CV profile and sections. Your page size, typography, and layout settings will stay the same.</p>
+              <div className="modal-actions"><button className="cancel-button" type="button" onClick={() => setConfirming(false)}>Back to review</button><button className="confirm-button" type="button" onClick={() => onApply(parsed)}>Yes, replace CV</button></div>
+            </div>
+            : <div className="resume-import-apply">
+              <span>Review the detected sections before replacing your current CV.</span>
+              <button className="export-button" type="button" onClick={() => setConfirming(true)}>Replace current CV</button>
+            </div>}
+        </div>}
+      </section>
+    </div>
+  )
+}
+
 function App() {
   const resume = useResumeStore((state) => state.resume)
   const { replaceResume, resetResume } = useResumeStore()
@@ -606,6 +694,7 @@ function App() {
   const [importError, setImportError] = useState('')
   const [resetOpen, setResetOpen] = useState(false)
   const [atsOpen, setAtsOpen] = useState(false)
+  const [resumeTextImportOpen, setResumeTextImportOpen] = useState(false)
   const fileInput = useRef<HTMLInputElement>(null)
   const previewRef = useRef<HTMLDivElement>(null)
 
@@ -641,6 +730,19 @@ function App() {
     if (fileInput.current) fileInput.current.value = ''
   }
 
+  function applyParsedResume(parsed: ReturnType<typeof parseResumeText>) {
+    replaceResume({
+      ...resume,
+      profile: {
+        ...parsed.profile,
+        hyperlinksEnabled: resume.profile.hyperlinksEnabled,
+      },
+      sections: parsed.sections,
+    })
+    setActiveSection('profile')
+    setResumeTextImportOpen(false)
+  }
+
   return (
     <main className="app-shell" data-theme={theme}>
       <header className="topbar no-print">
@@ -648,6 +750,7 @@ function App() {
         <div className="document-name"><span className="status-dot" /> {resume.profile.name || 'Untitled resume'} <span className="document-type">· Resume</span></div>
         <div className="topbar-actions">
           <button className="topbar-button ats-open-button" onClick={() => setAtsOpen(true)}><Sparkles size={15} /> <span>Analyze CV</span></button>
+          <button className="topbar-button" type="button" onClick={() => setResumeTextImportOpen(true)} aria-label="Paste and parse CV" title="Paste and parse CV"><ClipboardPaste size={15} /> <span>Paste CV</span></button>
           <button
             className="topbar-button theme-toggle"
             type="button"
@@ -687,6 +790,7 @@ function App() {
         <div className="confirm-modal" role="dialog" aria-modal="true" aria-labelledby="reset-title"><div className="modal-icon"><RotateCcw size={19} /></div><h2 id="reset-title">Start fresh?</h2><p>This replaces the current CV with the original sample data. You can export a JSON backup before continuing.</p><div className="modal-actions"><button className="cancel-button" onClick={() => setResetOpen(false)}>Keep editing</button><button className="confirm-button" onClick={() => { resetResume(); setActiveSection('profile'); setResetOpen(false) }}>Reset CV</button></div></div>
       </div>}
       {atsOpen && <AtsAnalysisModal resume={resume} onClose={() => setAtsOpen(false)} />}
+      {resumeTextImportOpen && <ResumeTextImportModal onClose={() => setResumeTextImportOpen(false)} onApply={applyParsedResume} />}
       <div className="print-root"><ResumePreview zoom={100} /></div>
     </main>
   )
