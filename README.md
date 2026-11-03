@@ -1,40 +1,71 @@
-# Folio — Local Resume Studio
+    # Folio
 
-A private, local-first CV editor built with React, TypeScript, Vite, Zustand, Zod, Tailwind CSS, and Lucide. Resume data stays in this browser's local storage. There is no account, backend, remote database, or external API.
+Folio is a simple, private CV editor for creating a clear, professional resume without fighting page layouts. Edit your content, see changes in a live preview, and adjust the design to make a focused one-page CV that is easy to read.
 
-## Windows setup
+**[Open the live editor](https://hvzz24.github.io/Folio/)**
 
-1. Install Node.js 20 or later.
-2. Open PowerShell in this project folder.
-3. Install dependencies: `npm install`
-4. Start the local editor: `npm run dev`
-5. Open the localhost URL printed by Vite.
+## What you can do
 
-Use `npm run build` to create the production bundle in `dist`. To make a PDF, choose **Export PDF** and select **Save as PDF** in the browser print dialog. Keep the print scale at 100% and turn off browser headers and footers for a clean page. The PDF is rendered from selectable document text, not a screenshot. Use **Export JSON** to create a backup or **Import** to restore one.
+- Edit your profile, summary, experience, education, projects, skills, and custom sections.
+- Hide, show, and reorder the built-in Professional Summary, Education, and Professional Experience sections.
+- Create custom sections, then rename, hide, show, reorder, or delete them.
+- Add multiple custom-labeled details to entries, such as technologies, tools, or responsibilities.
+- Paste a Markdown CV, review detected sections and entries, then confirm before replacing the current content. Parsing runs locally in the browser.
+- See your CV update as you edit.
+- Choose A4 or Letter paper, one or two columns, and adjust typography, margins, and spacing.
+- Print or save a selectable-text PDF from your browser.
+- Export a JSON backup and import it later.
+- Compare your CV with a job description using the optional, in-browser ATS-style analysis. Its score is an estimate, not a prediction of an employer's ATS results.
 
-## GitHub Pages live preview
+For a one-page CV, keep the most relevant details and adjust font size, margins, and spacing while checking the preview. Folio gives you control over the layout; it does not automatically guarantee that every CV will fit on one page.
 
-The included GitHub Actions workflow builds and deploys the site whenever changes are pushed to `main`. For this repository, the site URL is `https://hvzz24.github.io/Folio/`.
+## Get started
 
-1. In the GitHub repository, open **Settings → Pages** and set **Build and deployment → Source** to **GitHub Actions**.
-2. Push the project to the `main` branch, or run **Deploy GitHub Pages** from the repository's **Actions** tab.
-3. Wait for the workflow's build and deploy jobs to finish, then open the site URL above.
+You can use the [live editor](https://hvzz24.github.io/Folio/) or run Folio locally.
 
-GitHub Pages is public. The published app starts with fictional Jane Doe sample data. Each visitor's CV edits are kept in that visitor's own browser storage; the app has no server or external API and does not send CV contents to GitHub. Never commit real CVs, personal exports, or private data.
+### Run locally
 
-## Local data
+**Requirements:** Node.js 20 or later and npm.
 
-The browser saves edits automatically in local storage. Clearing this site's browser data also clears the saved CV, so export a JSON backup when needed. Imported files are validated before replacing the current document. The default document data lives in `src/data/defaultResume.ts` and uses fictional Jane Doe sample content; headings, entries, subsections, and design settings are editable in the app.
+```bash
+git clone https://github.com/hvzz24/Folio.git
+cd Folio
+npm install
+npm run dev
+```
 
-The sample is safe to publish, but a browser's existing local storage is not part of the project and is not cleared by changing the sample. Personal CV PDFs, Word documents, JSON backups, LaTeX files, environment files, and build outputs are ignored by `.gitignore`. Keep private source documents out of tracked files.
+Open the local URL shown in the terminal.
 
-## Features
+To create a production build:
 
-- Edit profile, summary, education, experience, projects, list-style subsections, and custom sections.
-- Rename, hide, reorder (drag), add, and delete sections and subsections.
-- Add, remove, and reorder entries, list items, and achievement bullets.
-- Pick month-and-year start/end dates for dated entries, mark an entry as ongoing, or add/remove a date range on project and custom entries.
-- Live document preview, zoom, typography, page size, margins, spacing, and column controls.
-- Persistent light and dark editor themes; the resume page stays white for accurate preview and printing.
-- Browser print / save as PDF, validated JSON import/export, and a reset-to-default action.
-- Local ATS-style comparison against a pasted job description, scanning all enabled CV content and normalizing common skill aliases (for example, MySQL/SQL, Git/GitHub, React.js/React, and WordPress/Word Press). Experience alignment includes professional experience and project descriptions. This rule-based estimate runs in the browser and is not an employer ATS prediction.
+```bash
+npm run build
+```
+
+The built files are written to `dist`.
+
+## Export a PDF
+
+Select **Export PDF** and choose **Save as PDF** in the browser's print dialog. For a clean page, use 100% scale and turn off browser headers and footers. Check the print preview before saving.
+
+## Your data and privacy
+
+Folio saves your CV in local storage in the browser you are using. The app has no account or backend, and CV content is not sent to a remote service. Your browser's local data is separate from exported files.
+
+Export a JSON backup if you want to move your CV to another browser or device. Clearing the browser's site data will delete the locally saved CV. Imported files are checked before they replace the current document.
+
+Pasted CV text is parsed in your browser and is not uploaded. Replacing the document updates its profile and sections while keeping its design settings.
+
+The live demo starts with fictional sample content. Edits you make in the demo are saved only in your own browser. Do not enter private information on a shared device, and do not commit personal CVs or exports to a public repository.
+
+## Deploy to GitHub Pages
+
+This repository includes a GitHub Actions workflow that builds and deploys the site when changes are pushed to `main`.
+
+1. In your repository, open **Settings → Pages** and set the source to **GitHub Actions**.
+2. Push to `main`, or run the **Deploy GitHub Pages** workflow from the **Actions** tab.
+3. After the workflow succeeds, open your repository's Pages URL.
+
+## Built with
+
+React, TypeScript, Vite, Zustand, Zod, Tailwind CSS, and Lucide.
