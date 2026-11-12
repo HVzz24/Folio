@@ -5,7 +5,7 @@ import {
   LayoutGrid, Maximize2, Minus, Moon, Plus, Printer, RotateCcw, Settings2, Sparkles, Sun,
   Trash2, Type, Upload, X,
 } from 'lucide-react'
-import { downloadJson } from './lib/storage'
+import { downloadAtsText, downloadJson } from './lib/storage'
 import { analyzeResume, type AtsAnalysis } from './lib/atsAnalysis'
 import { formatResumeDate, toMonthInputValue } from './lib/dates'
 import { parseResumeText } from './lib/resumeParser'
@@ -762,6 +762,7 @@ function App() {
           <button className="topbar-button" onClick={() => fileInput.current?.click()}><Upload size={15} /> <span>Import</span></button>
           <input ref={fileInput} hidden type="file" accept="application/json,.json" onChange={(event) => void importFile(event.target.files?.[0])} />
           <button className="topbar-button" onClick={() => downloadJson(resume)}><FileJson2 size={15} /> <span>Export JSON</span></button>
+          <button className="topbar-button" onClick={() => downloadAtsText(resume)}><FileText size={15} /> <span>Export TXT</span></button>
           <span className="topbar-divider" />
           <button className="export-button" onClick={() => printResume(resume.settings)}><ArrowDownToLine size={16} /> Export PDF</button>
           <button className="print-icon" title="Print resume" aria-label="Print resume" onClick={() => printResume(resume.settings)}><Printer size={16} /></button>
