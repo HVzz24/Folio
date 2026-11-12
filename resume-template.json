@@ -1,0 +1,150 @@
+{
+  "profile": {
+    "name": "",
+    "title": "",
+    "phone": "",
+    "email": "",
+    "location": "",
+    "linkedin": "",
+    "portfolio": "",
+    "photo": "",
+    "summaryEnabled": true,
+    "hyperlinksEnabled": true,
+    "summary": ""
+  },
+  "sections": [
+    {
+      "id": "professional-summary",
+      "heading": "PROFESSIONAL SUMMARY",
+      "enabled": true,
+      "type": "summary",
+      "items": [],
+      "subsections": []
+    },
+    {
+      "id": "education",
+      "heading": "EDUCATION",
+      "enabled": true,
+      "type": "education",
+      "items": [
+        {
+          "id": "education-1",
+          "fields": {
+            "institution": "",
+            "location": "",
+            "degree": "",
+            "grade": "",
+            "start": "",
+            "end": "",
+            "description": ""
+          },
+          "bullets": [],
+          "details": []
+        }
+      ],
+      "subsections": []
+    },
+    {
+      "id": "skills",
+      "heading": "SKILLS",
+      "enabled": true,
+      "type": "custom",
+      "items": [
+        {
+          "id": "skills-1",
+          "fields": {
+            "name": "",
+            "category": "",
+            "description": ""
+          },
+          "bullets": [],
+          "details": []
+        }
+      ],
+      "subsections": []
+    },
+    {
+      "id": "experience",
+      "heading": "PROFESSIONAL EXPERIENCE",
+      "enabled": true,
+      "type": "experience",
+      "items": [
+        {
+          "id": "experience-1",
+          "fields": {
+            "company": "",
+            "position": "",
+            "location": "",
+            "start": "",
+            "end": "",
+            "description": ""
+          },
+          "bullets": [],
+          "details": []
+        }
+      ],
+      "subsections": []
+    },
+    {
+      "id": "projects",
+      "heading": "PROJECTS",
+      "enabled": true,
+      "type": "custom",
+      "items": [
+        {
+          "id": "project-1",
+          "fields": {
+            "name": "",
+            "category": "",
+            "description": ""
+          },
+          "bullets": [],
+          "details": []
+        }
+      ],
+      "subsections": []
+    },
+    {
+      "id": "certifications",
+      "heading": "CERTIFICATIONS & ADDITIONAL INFORMATION",
+      "enabled": true,
+      "type": "custom",
+      "items": [
+        {
+          "id": "certifications-1",
+          "fields": {
+            "name": "",
+            "category": "",
+            "description": ""
+          },
+          "bullets": [],
+          "details": []
+        }
+      ],
+      "subsections": []
+    }
+  ],
+  "settings": {
+    "pageSize": "Letter",
+    "layout": "single",
+    "fontFamily": "Calibri",
+    "nameFontSize": 23.5,
+    "titleFontSize": 8,
+    "headingFontSize": 10,
+    "subheadingFontSize": 10,
+    "bodyFontSize": 9,
+    "contactFontSize": 9,
+    "lineHeight": 1,
+    "letterSpacing": 0.9,
+    "marginTop": 5,
+    "marginBottom": 5,
+    "marginSide": 5,
+    "sectionSpacing": 3,
+    "bulletSpacing": 0,
+    "paragraphSpacing": 0,
+    "dividerThickness": 0.2,
+    "alignment": "justify",
+    "fontWeight": "400",
+    "showDivider": true
+  }
+}

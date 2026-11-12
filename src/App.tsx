@@ -613,7 +613,7 @@ function ResumeTextImportModal({ onClose, onApply }: {
 
     const result = parseResumeText(source)
     if (!result.profile.name && !result.sections.length) {
-      setError('Struktur CV belum terdeteksi. Gunakan heading Markdown seperti # Nama dan ## Pengalaman.')
+      setError('Struktur CV belum terdeteksi. Tambahkan nama dan heading umum seperti Experience, Education, atau Skills.')
       setParsed(null)
       return
     }
@@ -635,7 +635,7 @@ function ResumeTextImportModal({ onClose, onApply }: {
           <div><span className="eyebrow">IMPORT · LOCAL PARSING</span><h2 id="resume-import-title">Paste your final CV</h2></div>
           <button className="icon-button" type="button" aria-label="Close CV import" onClick={onClose}><X size={17} /></button>
         </header>
-        <p className="ats-intro">Paste a Markdown-formatted CV. Folio will detect your profile, summary, work history, education, projects, and grouped skills in this browser.</p>
+        <p className="ats-intro">Paste a plain-text or Markdown CV. Folio detects common section headings, contact details, dates, and bullets locally. Review the parsed sections before applying them.</p>
         <form className="ats-form resume-import-form" onSubmit={parseText}>
           <label className="field"><span>CV content</span><textarea
             value={source}
@@ -647,7 +647,7 @@ function ResumeTextImportModal({ onClose, onApply }: {
             }}
             rows={14}
             required
-            placeholder={'# Full Name\nCity, Country | +1 555 0100 | name@example.com\n\n## PROFESSIONAL SUMMARY\nYour summary...\n\n## EXPERIENCE\n### Company — Location\n**Role** | *Jan 2023 – Present*\n- Achievement or responsibility'}
+            placeholder={'Jane Doe\nSoftware Engineer\n+1 555 010 1234\njane@example.com\nhttps://janedoe.dev\nSan Francisco, CA\n\nSUMMARY\nYour summary...\n\nEXPERIENCE\nSoftware Engineer - Acme Corp - San Francisco, CA - Mar 2022 - Present\n- Achievement or responsibility\n\nEDUCATION\nB.Sc. Computer Science - State University - Boston, MA - 2018 - 2022'}
           /></label>
           {error && <p className="resume-import-error" role="alert">{error}</p>}
           <div className="ats-form-footer">

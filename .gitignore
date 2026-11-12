@@ -1,5 +1,5 @@
 README\ copy.md
-
+main example.json
 # Dependencies and generated builds
 node_modules/
 dist/
@@ -20,6 +20,7 @@ resume*.json
 *resume*.json
 *cv*.json
 resume-backup*.json
+!resume-template.json
 backups/
 exports/
 
