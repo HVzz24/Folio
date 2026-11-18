@@ -6,10 +6,11 @@ import {
   Trash2, Type, Upload, X,
 } from 'lucide-react'
 import { downloadAtsText, downloadJson } from './lib/storage'
+import { parseResumeImport } from './lib/resumeImport'
 import { analyzeResume, type AtsAnalysis } from './lib/atsAnalysis'
 import { formatResumeDate, toMonthInputValue } from './lib/dates'
 import { parseResumeText } from './lib/resumeParser'
-import { resumeSchema, type ResumeItem, type ResumeSection } from './types/resume'
+import { type ResumeItem, type ResumeSection } from './types/resume'
 import { useResumeStore } from './store/resumeStore'
 
 const FIELD_LABELS: Record<string, string> = {
@@ -717,9 +718,22 @@ function App() {
   async function importFile(file?: File) {
     if (!file) return
     try {
-      const parsed = resumeSchema.safeParse(JSON.parse(await file.text()))
+      const parsed = parseResumeImport(JSON.parse(await file.text()))
       if (!parsed.success) {
-        setImportError(`This file does not match the resume format: ${parsed.error.issues[0]?.path.join('.') || 'invalid data'}.`)
+        const issues = parsed.error.issues.slice(0, 5).map((issue) =>
+          `${issue.path.join('.') || 'root'} (${issue.message})`,
+        )
+        const additional = parsed.error.issues.length > issues.length
+          ? ` And ${parsed.error.issues.length - issues.length} more.`
+          : ''
+        const hasRootFormatIssue = parsed.error.issues.some((issue) =>
+          issue.path.length === 1 && ['profile', 'sections'].includes(String(issue.path[0])),
+        )
+        const explanation = hasRootFormatIssue
+          ? "This file is not using Folio's required top-level structure. It needs a \"profile\" object and a \"sections\" array."
+          : 'This is JSON, but some values do not match the resume template.'
+        const fixPrompt = 'Give the AI the resume-template.json and this file. Ask it: "Convert my CV to match the template exactly. Keep the top-level profile object and sections array; do not rename or remove keys. Preserve all CV facts and return only valid JSON with no Markdown."'
+        setImportError(`${explanation}\nProblems: ${issues.join('; ')}.${additional}\nAI fix prompt: ${fixPrompt}`)
         return
       }
       replaceResume(parsed.data)
