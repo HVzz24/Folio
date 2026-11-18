@@ -1,6 +1,16 @@
 import type { Resume, ResumeSection } from '../types/resume'
 
-type ParsedResume = Pick<Resume, 'profile' | 'sections'> & { warnings: string[] }
+interface ParseDiagnostic {
+  title: string
+  message: string
+  section?: string
+  excerpt?: string
+}
+
+type ParsedResume = Pick<Resume, 'profile' | 'sections'> & {
+  warnings: string[]
+  diagnostics: ParseDiagnostic[]
+}
 
 interface MarkdownSection {
   heading: string
@@ -14,6 +24,19 @@ interface ParsedEntry {
 
 const MARKDOWN_HEADING = /^(#{1,6})\s+(.+?)\s*$/
 const MONTH_RANGE = /([A-Za-z]{3,9}\s+\d{4})\s*[–—-]\s*(Present|Current|[A-Za-z]{3,9}\s+\d{4})/i
+const MARKDOWN_LINK = /\[([^\]]+)\]\((https?:\/\/[^)]+)\)/gi
+
+function addWarning(
+  warnings: string[],
+  diagnostics: ParseDiagnostic[],
+  title: string,
+  message: string,
+  section?: string,
+  excerpt?: string,
+) {
+  warnings.push(message)
+  diagnostics.push({ title, message, section, excerpt })
+}
 
 function plainText(value: string): string {
   return value
@@ -31,7 +54,8 @@ function makeSection(heading: string, type: ResumeSection['type']): ResumeSectio
 }
 
 function parseMonthRange(value: string): { start: string; end: string } {
-  const match = plainText(value).match(MONTH_RANGE)
+  const text = plainText(value)
+  const match = text.match(MONTH_RANGE) ?? text.match(PLAIN_DATE_RANGE)
   if (!match) return { start: '', end: '' }
   const normalize = (date: string) => /^present|current$/i.test(date) ? 'Present' : date
   return { start: normalize(match[1]), end: normalize(match[2]) }
@@ -39,13 +63,23 @@ function parseMonthRange(value: string): { start: string; end: string } {
 
 function getEntries(lines: string[]): ParsedEntry[] {
   const entries: ParsedEntry[] = []
+  let pendingLines: string[] = []
   for (const line of lines) {
-    const heading = line.match(/^###\s+(.+)$/)
+    const heading = line.trim().match(/^(?:#{3,6}\s+(.+)|\*\*(.+?)\*\*(?:\s*[—–-]\s*(.+))?\s*:?)$/)
     if (heading) {
-      entries.push({ heading: plainText(heading[1]), lines: [] })
+      if (!entries.length && pendingLines.some((pending) => pending.trim())) {
+        entries.push({ heading: '', lines: pendingLines })
+      }
+      const value = heading[1] ?? [heading[2], heading[3]].filter(Boolean).join(' — ')
+      entries.push({ heading: plainText(value), lines: [] })
     } else if (entries.length) {
       entries[entries.length - 1].lines.push(line)
+    } else {
+      pendingLines.push(line)
     }
+  }
+  if (!entries.length && pendingLines.some((line) => line.trim())) {
+    entries.push({ heading: '', lines: pendingLines })
   }
   return entries
 }
@@ -90,6 +124,10 @@ function splitPlainDateRange(line: string): { prefix: string; start: string; end
     start: normalize(match[1]),
     end: normalize(match[2]),
   }
+}
+
+function isDateLine(line: string): boolean {
+  return splitPlainDateRange(plainText(line))?.prefix === ''
 }
 
 function looksLikeDegree(value: string): boolean {
@@ -277,11 +315,28 @@ function parsePlainResumeText(input: string): ParsedResume {
   })
 
   const warnings: string[] = []
-  if (!name) warnings.push('Name not found. Check the first lines of the pasted CV.')
-  if (!email) warnings.push('Email not found. Add or check it after import.')
-  if (!phone) warnings.push('Phone number not found. Add or check it after import.')
-  if (!sections.length) warnings.push('No common CV section headings were detected. Check the pasted text and section names.')
-  if (urls.some((value) => /github\.com/i.test(value))) warnings.push('GitHub has no separate profile field, so its link was not imported.')
+  const diagnostics: ParseDiagnostic[] = []
+  if (!name) addWarning(warnings, diagnostics, 'Name not found', 'Check the first lines of the pasted CV.')
+  if (!email) addWarning(warnings, diagnostics, 'Email not found', 'Add or check the email after import.')
+  if (!phone) addWarning(warnings, diagnostics, 'Phone number not found', 'Add or check the phone number after import.')
+  if (!sections.length) {
+    addWarning(
+      warnings,
+      diagnostics,
+      'No common CV sections detected',
+      'Check the pasted text and use recognizable section headings.',
+    )
+  }
+  if (urls.some((value) => /github\.com/i.test(value))) {
+    addWarning(
+      warnings,
+      diagnostics,
+      'GitHub link cannot be placed in the profile',
+      'The editor has no dedicated GitHub profile field, so this link will not appear in the imported resume. Add it manually after import.',
+      undefined,
+      urls.find((value) => /github\.com/i.test(value)),
+    )
+  }
 
   return {
     profile: {
@@ -299,6 +354,7 @@ function parsePlainResumeText(input: string): ParsedResume {
     },
     sections: parsedSections,
     warnings,
+    diagnostics,
   }
 }
 
@@ -307,37 +363,73 @@ function parseGroupedList(section: MarkdownSection): ResumeSection {
   let currentGroup: { heading: string; items: string[] } | undefined
 
   for (const line of section.lines) {
-    const bullet = line.trim().match(/^[-*+]\s+(.+)$/)
-    if (!bullet) continue
-    const text = plainText(bullet[1])
-    const labelMatch = text.match(/^(.+?):\s*(.*)$/)
-    if (labelMatch && /^\*\*/.test(bullet[1])) {
-      currentGroup = { heading: labelMatch[1].trim(), items: [] }
-      result.subsections.push({ id: crypto.randomUUID(), ...currentGroup })
-      if (labelMatch[2]) {
-        currentGroup.items.push(...labelMatch[2].split(',').map((item) => item.trim()).filter(Boolean))
+    const value = line.trim()
+    if (!value) continue
+    const boldLabel = value.match(/^(?:[-*+]\s*)?\*\*(.+?)\*\*\s*:?\s*(.*)$/)
+    if (boldLabel) {
+      currentGroup = {
+        heading: plainText(boldLabel[1]).replace(/:\s*$/, '').trim(),
+        items: [],
       }
-    } else {
+      result.subsections.push({ id: crypto.randomUUID(), ...currentGroup })
+      const content = plainText(boldLabel[2])
+      if (content) currentGroup.items.push(...content.split(',').map((item) => item.trim()).filter(Boolean))
+      continue
+    }
+
+    const standaloneHeading = value.match(/^#{3,6}\s+(.+)$/)
+    if (standaloneHeading) {
+      currentGroup = { heading: plainText(standaloneHeading[1]), items: [] }
+      result.subsections.push({ id: crypto.randomUUID(), ...currentGroup })
+      continue
+    }
+
+    const bullet = value.match(/^[-*+]\s+(.+)$/)
+    if (!bullet) {
       if (!currentGroup) {
         currentGroup = { heading: '', items: [] }
         result.subsections.push({ id: crypto.randomUUID(), ...currentGroup })
       }
-      currentGroup.items.push(text)
+      currentGroup.items.push(plainText(value))
+      continue
     }
+
+    if (!currentGroup) {
+      currentGroup = { heading: '', items: [] }
+      result.subsections.push({ id: crypto.randomUUID(), ...currentGroup })
+    }
+    currentGroup.items.push(plainText(bullet[1]))
   }
 
   return result
 }
 
-function parseStructuredEntries(section: MarkdownSection, type: 'education' | 'experience' | 'custom'): ResumeSection {
+function parseStructuredEntries(
+  section: MarkdownSection,
+  type: 'education' | 'experience' | 'custom',
+  warnings: string[],
+  diagnostics: ParseDiagnostic[],
+): ResumeSection {
   const result = makeSection(section.heading, type)
-  for (const entry of getEntries(section.lines)) {
+  const entries = getEntries(section.lines)
+  const hasEntryHeadings = section.lines.some((line) => /^(?:\s*#{3,6}\s+|\s*\*\*.+\*\*(?:\s*[—–-]\s*.+)?\s*:?\s*$)/.test(line))
+  if (entries.length && (!hasEntryHeadings || entries.some((entry) => !entry.heading))) {
+    addWarning(
+      warnings,
+      diagnostics,
+      `Could not split ${section.heading} into separate entries`,
+      `The content was kept together as one entry. Add a bold title or Markdown subheading for each item, then review the result.`,
+      section.heading,
+      section.lines.find((line) => line.trim())?.trim(),
+    )
+  }
+
+  for (const entry of entries) {
     const details = entry.lines.map(plainText).filter(Boolean)
-    const roleLine = details.find((line) => line.includes('|'))
-      ?? details.find((line) => !line.startsWith('-') && !line.startsWith('*'))
+    const roleLine = details.find((line) => !/^[-*+]\s+/.test(line) && !isDateLine(line))
       ?? ''
     const roleParts = roleLine.split('|').map((part) => plainText(part)).filter(Boolean)
-    const dates = parseMonthRange(roleLine || details.join(' '))
+    const dates = parseMonthRange(details.join(' '))
     const bullets = getBullets(entry.lines)
     const headingParts = entry.heading.split(/\s+[—–]\s+/).map((part) => part.trim())
     const location = headingParts.length > 1 ? headingParts.slice(1).join(' — ') : ''
@@ -357,22 +449,35 @@ function parseStructuredEntries(section: MarkdownSection, type: 'education' | 'e
         description: '',
       }
     } else if (type === 'experience') {
-      fields = {
-        company: headingParts[0],
-        position: roleOrDegree,
-        location,
-        start: dates.start,
-        end: dates.end,
-        description: '',
+      if (headingParts.length >= 3) {
+        fields = {
+          position: headingParts[0],
+          company: headingParts[1],
+          location: headingParts.slice(2).join(' — '),
+          start: dates.start,
+          end: dates.end,
+          description: '',
+        }
+      } else {
+        fields = {
+          company: headingParts[0] ?? '',
+          position: roleOrDegree,
+          location,
+          start: dates.start,
+          end: dates.end,
+          description: '',
+        }
       }
     } else {
       fields = {
-        name: headingParts[0],
+        name: entry.heading || roleOrDegree,
         category: [roleOrDegree, category].filter(Boolean).join(' · '),
       }
     }
 
-    const description = details.filter((line) => !line.startsWith('-') && !line.startsWith('*') && line !== roleLine)
+    const description = details.filter((line) => (
+      !/^[-*+]\s+/.test(line) && !isDateLine(line) && line !== roleLine
+    ))
     result.items.push({
       id: crypto.randomUUID(),
       fields,
@@ -381,6 +486,27 @@ function parseStructuredEntries(section: MarkdownSection, type: 'education' | 'e
     })
     if (description.length && result.items.length) {
       result.items[result.items.length - 1].fields.description = description.join('\n')
+    }
+
+    const item = result.items[result.items.length - 1]
+    if (type === 'education' && (!item.fields.institution || !item.fields.degree)) {
+      addWarning(
+        warnings,
+        diagnostics,
+        'Education details may need review',
+        'An education entry was detected, but its institution or degree could not be identified confidently.',
+        section.heading,
+        entry.heading || roleLine,
+      )
+    } else if (type === 'experience' && (!item.fields.company || !item.fields.position)) {
+      addWarning(
+        warnings,
+        diagnostics,
+        'Experience details may need review',
+        'An experience entry was detected, but its organization or role could not be identified confidently.',
+        section.heading,
+        entry.heading || roleLine,
+      )
     }
   }
   return result
@@ -399,11 +525,11 @@ function classifySection(heading: string): 'summary' | 'education' | 'experience
 }
 
 function parseMarkdownResumeText(input: string): ParsedResume {
-  const lines = input.replace(/\r\n/g, '\n').split('\n')
+  const lines = input.replace(/\r\n?/g, '\n').replace(/\u00a0/g, ' ').split('\n')
   const sections: MarkdownSection[] = []
   let currentSection: MarkdownSection | undefined
   let name = ''
-  let contactLine = ''
+  const contactLines: string[] = []
   let foundFirstHeading = false
 
   for (const rawLine of lines) {
@@ -420,18 +546,33 @@ function parseMarkdownResumeText(input: string): ParsedResume {
       sections.push(currentSection)
       continue
     }
-    if (!currentSection && !contactLine) {
-      contactLine = line
+    if (!currentSection) {
+      contactLines.push(line)
       continue
     }
     currentSection?.lines.push(line)
   }
 
-  const email = contactLine.match(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/i)?.[0] ?? ''
-  const phone = contactLine.match(/(?:\+\d{1,3}[\s().-]*)?(?:\d[\s().-]*){8,}/)?.[0]?.trim() ?? ''
-  const linkedin = contactLine.match(/(?:https?:\/\/)?(?:www\.)?linkedin\.com\/[^\s|]+/i)?.[0] ?? ''
-  const portfolio = contactLine.match(/https?:\/\/(?![^/\s|]*linkedin\.com|[^/\s|]*github\.com)[^\s|]+/i)?.[0] ?? ''
-  const contactParts = contactLine.split('|').map(plainText)
+  const contactLine = contactLines.join(' | ')
+  const links = Array.from(contactLine.matchAll(MARKDOWN_LINK), (match) => ({
+    label: match[1],
+    url: match[2].replace(/[.,;]+$/, ''),
+  }))
+  const normalizedContact = plainText(contactLine)
+  const email = normalizedContact.match(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/i)?.[0] ?? ''
+  const phone = normalizedContact.match(/(?:\+\d{1,3}[\s().-]*)?(?:\d[\s().-]*){8,}/)?.[0]?.trim() ?? ''
+  const linkedin = links.find(({ url, label }) => /linkedin\.com/i.test(url) || /linkedin/i.test(label))?.url
+    ?? normalizedContact.match(/(?:https?:\/\/)?(?:www\.)?linkedin\.com\/[^\s|]+/i)?.[0]?.replace(/[.,;]+$/, '')
+    ?? ''
+  const portfolio = links.find(({ url, label }) => (
+    !/(?:linkedin|github)\.com/i.test(url) && !/linkedin|github/i.test(label)
+  ))?.url
+    ?? normalizedContact.match(/https?:\/\/(?![^/\s|]*linkedin\.com|[^/\s|]*github\.com)[^\s|]+/i)?.[0]?.replace(/[.,;]+$/, '')
+    ?? ''
+  const github = links.find(({ url, label }) => /github\.com/i.test(url) || /github/i.test(label))
+  const githubUrl = github?.url
+    ?? normalizedContact.match(/(?:https?:\/\/)?(?:www\.)?github\.com\/[^\s|]+/i)?.[0]?.replace(/[.,;]+$/, '')
+  const contactParts = normalizedContact.split('|').map(plainText)
   const location = contactParts.find((part) => (
     part && !part.includes('@') && !/\d{7,}/.test(part) && !/https?:\/\//i.test(part)
     && !/\b(linkedin|portfolio|github)\b/i.test(part)
@@ -442,32 +583,80 @@ function parseMarkdownResumeText(input: string): ParsedResume {
     : ''
   const title = summary.match(/^(?:results-driven\s+)?(.+?)\s+(?:holding|with|seeking)\b/i)?.[1]?.trim() ?? ''
   const warnings: string[] = []
+  const diagnostics: ParseDiagnostic[] = []
 
-  if (!name) warnings.push('Name not found. Use a level-one heading (# Name) for the name.')
-  if (!email) warnings.push('Email not found in the contact line.')
-  if (!phone) warnings.push('Phone number not found in the contact line.')
-  if (!title) warnings.push('Could not infer a professional title from the summary. Add it manually after import.')
-  if (/\bGitHub\b/i.test(contactLine)) warnings.push('GitHub has no separate field in the editor, so its link was not imported.')
-  if (/\bLinkedIn\b/i.test(contactLine) && !linkedin) warnings.push('LinkedIn is listed without a URL, so add its link manually after import.')
-  if (/\bPortfolio\b/i.test(contactLine) && !portfolio) warnings.push('Portfolio is listed without a URL, so add its link manually after import.')
+  if (!name) addWarning(warnings, diagnostics, 'Name not found', 'Use a level-one heading (# Name) for the name.')
+  if (!email) addWarning(warnings, diagnostics, 'Email not found', 'Check that the email appears on the contact line.')
+  if (!phone) addWarning(warnings, diagnostics, 'Phone number not found', 'Check that the phone number appears on the contact line.')
+  if (!title) {
+    addWarning(
+      warnings,
+      diagnostics,
+      'Professional title not inferred',
+      'Add the title manually after import, or put it on its own line below the name.',
+    )
+  }
+  if (githubUrl || /\bGitHub\b/i.test(contactLine)) {
+    addWarning(
+      warnings,
+      diagnostics,
+      'GitHub link cannot be placed in the profile',
+      'The editor has no dedicated GitHub profile field, so this link will not appear in the imported resume. Add it manually after import.',
+      undefined,
+      githubUrl,
+    )
+  }
+  if (/\bLinkedIn\b/i.test(contactLine) && !linkedin) {
+    addWarning(warnings, diagnostics, 'LinkedIn URL not found', 'Add the LinkedIn URL manually after import.')
+  }
+  if (/\bPortfolio\b/i.test(contactLine) && !portfolio) {
+    addWarning(warnings, diagnostics, 'Portfolio URL not found', 'Add the portfolio URL manually after import.')
+  }
 
   const parsedSections: ResumeSection[] = []
   for (const section of sections) {
     const classification = classifySection(section.heading)
     if (classification === 'summary') {
       parsedSections.push(makeSection(section.heading, 'summary'))
+      if (!section.lines.some((line) => line.trim())) {
+        addWarning(
+          warnings,
+          diagnostics,
+          `No summary text mapped in ${section.heading}`,
+          'The summary heading was detected, but the section contains no text.',
+          section.heading,
+        )
+      }
     } else if (classification === 'education') {
-      parsedSections.push(parseStructuredEntries(section, 'education'))
+      parsedSections.push(parseStructuredEntries(section, 'education', warnings, diagnostics))
     } else if (classification === 'experience') {
-      parsedSections.push(parseStructuredEntries(section, 'experience'))
+      parsedSections.push(parseStructuredEntries(section, 'experience', warnings, diagnostics))
     } else if (classification === 'entries') {
-      parsedSections.push(parseStructuredEntries(section, 'custom'))
+      parsedSections.push(parseStructuredEntries(section, 'custom', warnings, diagnostics))
     } else {
-      parsedSections.push(parseGroupedList(section))
+      const parsed = parseGroupedList(section)
+      parsedSections.push(parsed)
+      if (section.lines.some((line) => line.trim()) && !parsed.subsections.some((subsection) => subsection.items.length)) {
+        addWarning(
+          warnings,
+          diagnostics,
+          `No content mapped in ${section.heading}`,
+          'The section heading was detected, but no editable content could be extracted.',
+          section.heading,
+          section.lines.find((line) => line.trim())?.trim(),
+        )
+      }
     }
   }
 
-  if (!parsedSections.length) warnings.push('No Markdown CV sections were detected. Use headings such as ## Experience.')
+  if (!parsedSections.length) {
+    addWarning(
+      warnings,
+      diagnostics,
+      'No Markdown CV sections detected',
+      'Use level-two headings (##) for sections such as Experience or Education.',
+    )
+  }
 
   return {
     profile: {
@@ -485,6 +674,7 @@ function parseMarkdownResumeText(input: string): ParsedResume {
     },
     sections: parsedSections,
     warnings,
+    diagnostics,
   }
 }
 

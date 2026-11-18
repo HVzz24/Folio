@@ -1,6 +1,6 @@
-import { Fragment, useEffect, useRef, useState } from 'react'
+import { Fragment, useEffect, useMemo, useRef, useState } from 'react'
 import {
-  AlignCenter, AlignJustify, AlignLeft, ArrowDown, ArrowDownToLine, ArrowUp, Check, ClipboardPaste,
+  AlignCenter, AlignJustify, AlignLeft, ArrowDown, ArrowDownToLine, ArrowLeft, ArrowRight, ArrowUp, Check, ClipboardPaste,
   ChevronDown, ChevronRight, Eye, EyeOff, FileJson2, FileText, GripVertical,
   LayoutGrid, Maximize2, Minus, Moon, Plus, Printer, RotateCcw, Settings2, Sparkles, Sun,
   Trash2, Type, Upload, X,
@@ -10,7 +10,7 @@ import { parseResumeImport } from './lib/resumeImport'
 import { analyzeResume, type AtsAnalysis } from './lib/atsAnalysis'
 import { formatResumeDate, toMonthInputValue } from './lib/dates'
 import { parseResumeText } from './lib/resumeParser'
-import { type ResumeItem, type ResumeSection } from './types/resume'
+import { type Resume, type ResumeItem, type ResumeSection } from './types/resume'
 import { useResumeStore } from './store/resumeStore'
 
 const FIELD_LABELS: Record<string, string> = {
@@ -282,7 +282,15 @@ function ContentSidebar({ active, setActive, dragId, setDragId }: {
                 onDragEnd={() => setDragId(null)}
               ><GripVertical size={15} /></span>
               <button className="accordion-trigger section-trigger" onClick={() => setActive(active === section.id ? '' : section.id)}>
-                <span className="accordion-name">{section.heading || 'Untitled section'}<small>{section.type === 'summary' ? 'Summary statement' : `${section.items.length} entries`}</small></span>
+                <span className="accordion-name">{section.heading || 'Untitled section'}<small>{section.type === 'summary'
+                  ? 'Summary statement'
+                  : [
+                    section.items.length ? `${section.items.length} entries` : '',
+                    section.subsections.filter((subsection) => subsection.items.length > 0).length
+                      ? `${section.subsections.filter((subsection) => subsection.items.length > 0).length} groups · ${section.subsections.reduce((total, subsection) => total + subsection.items.length, 0)} items`
+                      : '',
+                  ].filter(Boolean).join(' · ') || '0 items'
+                }</small></span>
                 {active === section.id ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
               </button>
               <MiniButton title={section.enabled ? 'Hide section' : 'Show section'} onClick={() => toggleSection(section)}>{section.enabled ? <Eye size={15} /> : <EyeOff size={15} />}</MiniButton>
@@ -299,7 +307,7 @@ function ContentSidebar({ active, setActive, dragId, setDragId }: {
                   <button className="outline-action" onClick={() => store.addItem(section.id)}><Plus size={14} /> Add {section.type === 'education' ? 'education' : section.type === 'experience' ? 'position' : 'entry'}</button>
                   <div className="subsections"><ListSectionEditor section={section} /></div>
                 </>}
-              {section.type === 'custom' && section.items.length === 0 && <p className="helper-copy">Start with an entry or create titled subsections and list items.</p>}
+              {section.type === 'custom' && section.items.length === 0 && section.subsections.length === 0 && <p className="helper-copy">Start with an entry or create titled subsections and list items.</p>}
               {section.type === 'custom' && <button className="remove-section" onClick={() => store.deleteSection(section.id)}><Trash2 size={14} /> Delete section</button>}
             </div>}
             {index !== resume.sections.length - 1 && <div className="section-separator" />}
@@ -320,8 +328,13 @@ function ContentSidebar({ active, setActive, dragId, setDragId }: {
   )
 }
 
-function ResumePreview({ zoom, containerRef }: { zoom: number; containerRef?: React.RefObject<HTMLDivElement | null> }) {
-  const resume = useResumeStore((state) => state.resume)
+function ResumePreview({ zoom, containerRef, resume: previewResume }: {
+  zoom: number
+  containerRef?: React.RefObject<HTMLDivElement | null>
+  resume?: Resume
+}) {
+  const storedResume = useResumeStore((state) => state.resume)
+  const resume = previewResume ?? storedResume
   const { profile, settings } = resume
   const contactValues: { kind: 'email' | 'phone' | 'location' | 'linkedin' | 'portfolio'; value: string }[] = [
     { kind: 'email', value: profile.email },
@@ -595,89 +608,143 @@ function AtsAnalysisModal({ resume, onClose }: { resume: ReturnType<typeof useRe
   )
 }
 
-function ResumeTextImportModal({ onClose, onApply }: {
-  onClose: () => void
+function MarkdownCvStudio({ source, onSourceChange, currentResume, onBack, onApply }: {
+  source: string
+  onSourceChange: (source: string) => void
+  currentResume: Resume
+  onBack: () => void
   onApply: (parsed: ReturnType<typeof parseResumeText>) => void
 }) {
-  const [source, setSource] = useState('')
-  const [parsed, setParsed] = useState<ReturnType<typeof parseResumeText> | null>(null)
-  const [error, setError] = useState('')
+  const [mobileView, setMobileView] = useState<'source' | 'preview'>('source')
+  const [zoom, setZoom] = useState(78)
   const [confirming, setConfirming] = useState(false)
+  const previewRef = useRef<HTMLDivElement>(null)
+  const parsed = useMemo(
+    () => source.trim() ? parseResumeText(source) : null,
+    [source],
+  )
 
-  function parseText(event: React.FormEvent<HTMLFormElement>) {
-    event.preventDefault()
-    if (!source.trim()) {
-      setError('Tempelkan isi CV terlebih dahulu.')
-      setParsed(null)
-      return
-    }
-
-    const result = parseResumeText(source)
-    if (!result.profile.name && !result.sections.length) {
-      setError('Struktur CV belum terdeteksi. Tambahkan nama dan heading umum seperti Experience, Education, atau Skills.')
-      setParsed(null)
-      return
-    }
-    setError('')
-    setConfirming(false)
-    setParsed(result)
+  function fitPreview() {
+    const pageWidthMm = currentResume.settings.pageSize === 'A4' ? 210 : 215.9
+    const pageWidthPx = pageWidthMm * 96 / 25.4
+    const availableWidth = (previewRef.current?.clientWidth ?? 0) - 48
+    if (availableWidth > 0) setZoom(Math.max(50, Math.min(100, Math.floor((availableWidth / pageWidthPx) * 100))))
   }
 
-  const itemCount = parsed?.sections.reduce((total, section) => (
+  const previewResume = parsed
+    ? {
+      ...currentResume,
+      profile: { ...parsed.profile, hyperlinksEnabled: currentResume.profile.hyperlinksEnabled },
+      sections: parsed.sections,
+    }
+    : undefined
+  const itemCount = parsed ? parsed.sections.reduce((total, section) => (
     total + section.items.length + section.subsections.reduce((subsectionTotal, subsection) => subsectionTotal + subsection.items.length, 0)
-  ), 0) ?? 0
+  ), 0) : 0
+  const canContinue = Boolean(parsed && (parsed.profile.name || parsed.sections.length))
 
   return (
-    <div className="modal-backdrop no-print ats-backdrop resume-import-backdrop" role="presentation" onMouseDown={(event) => {
-      if (event.target === event.currentTarget) onClose()
-    }}>
-      <section className="ats-modal resume-import-modal" role="dialog" aria-modal="true" aria-labelledby="resume-import-title">
-        <header className="ats-modal-header">
-          <div><span className="eyebrow">IMPORT · LOCAL PARSING</span><h2 id="resume-import-title">Paste your final CV</h2></div>
-          <button className="icon-button" type="button" aria-label="Close CV import" onClick={onClose}><X size={17} /></button>
-        </header>
-        <p className="ats-intro">Paste a plain-text or Markdown CV. Folio detects common section headings, contact details, dates, and bullets locally. Review the parsed sections before applying them.</p>
-        <form className="ats-form resume-import-form" onSubmit={parseText}>
-          <label className="field"><span>CV content</span><textarea
+    <div className="markdown-studio">
+      <header className="markdown-studio-header">
+        <button className="topbar-button markdown-back-button" type="button" onClick={onBack}><ArrowLeft size={15} /> Back to Folio</button>
+        <div className="markdown-studio-title"><span className="eyebrow">FOLIO · MARKDOWN REVIEW</span><h1>Preview your CV</h1></div>
+        <span className="markdown-studio-privacy"><Check size={13} /> Draft stays in this tab</span>
+      </header>
+      <div className="markdown-studio-mobile-tabs" role="tablist" aria-label="Markdown and preview">
+        <button type="button" role="tab" aria-selected={mobileView === 'source'} className={mobileView === 'source' ? 'selected' : ''} onClick={() => setMobileView('source')}>Markdown</button>
+        <button type="button" role="tab" aria-selected={mobileView === 'preview'} className={mobileView === 'preview' ? 'selected' : ''} onClick={() => setMobileView('preview')}>Live preview</button>
+      </div>
+      <div className="markdown-studio-grid" data-mobile-view={mobileView}>
+        <section className="markdown-source-panel" aria-label="Markdown CV editor">
+          <div className="markdown-source-heading">
+            <div><span className="eyebrow">SOURCE</span><h2>CV content</h2><p>Edit the Markdown; the preview updates as you type.</p></div>
+            <button className="text-action markdown-clear-button" type="button" disabled={!source} onClick={() => {
+              onSourceChange('')
+              setConfirming(false)
+            }}><X size={13} /> Clear</button>
+          </div>
+          <textarea
+            aria-label="CV Markdown source"
+            className="markdown-source-editor"
             value={source}
+            spellCheck={false}
+            placeholder={'# Jane Doe\nLocation | email@example.com | +1 555 010 1234\n\n## PROFESSIONAL SUMMARY\nYour summary...\n\n## EXPERIENCE\n**Role — Company**\nJan 2022 – Present\n- Achievement or responsibility'}
             onChange={(event) => {
-              setSource(event.target.value)
-              setParsed(null)
-              setError('')
+              onSourceChange(event.target.value)
               setConfirming(false)
             }}
-            rows={14}
-            required
-            placeholder={'Jane Doe\nSoftware Engineer\n+1 555 010 1234\njane@example.com\nhttps://janedoe.dev\nSan Francisco, CA\n\nSUMMARY\nYour summary...\n\nEXPERIENCE\nSoftware Engineer - Acme Corp - San Francisco, CA - Mar 2022 - Present\n- Achievement or responsibility\n\nEDUCATION\nB.Sc. Computer Science - State University - Boston, MA - 2018 - 2022'}
-          /></label>
-          {error && <p className="resume-import-error" role="alert">{error}</p>}
-          <div className="ats-form-footer">
-            <span>CV text is parsed locally; it is not uploaded.</span>
-            <button className="export-button" type="submit"><ClipboardPaste size={15} /> Parse CV</button>
+          />
+          <div className="markdown-review">
+            {parsed
+              ? <>
+                <div className="resume-import-counts">
+                  <div><strong>{parsed.profile.name || 'Name not found'}</strong><span>Profile</span></div>
+                  <div><strong>{parsed.sections.length}</strong><span>Sections</span></div>
+                  <div><strong>{itemCount}</strong><span>Items mapped</span></div>
+                </div>
+                <ul className="resume-import-sections">{parsed.sections.map((section) => {
+                  const sectionItems = section.items.length + section.subsections.reduce((total, subsection) => total + subsection.items.length, 0)
+                  const groupsWithItems = section.subsections.filter((subsection) => subsection.items.length > 0).length
+                  const listItemCount = section.subsections.reduce((total, subsection) => total + subsection.items.length, 0)
+                  const count = section.type === 'summary'
+                    ? 'Summary mapped to profile'
+                    : [
+                      section.items.length ? `${section.items.length} entries` : '',
+                      groupsWithItems ? `${groupsWithItems} groups` : '',
+                      listItemCount ? `${listItemCount} list items` : '',
+                    ].filter(Boolean).join(' · ') || 'No items mapped'
+                  return <li className={sectionItems === 0 && section.type !== 'summary' ? 'resume-import-section-empty' : ''} key={section.id}>
+                    <span>{section.heading}</span><small>{count}</small>
+                  </li>
+                })}</ul>
+                {parsed.diagnostics.length > 0
+                  ? <div className="resume-import-warnings">
+                    <strong>Items to review ({parsed.diagnostics.length})</strong>
+                    <ul>{parsed.diagnostics.map((diagnostic, index) => (
+                      <li key={`${diagnostic.title}-${index}`}>
+                        <strong>{diagnostic.title}</strong>
+                        <span>{diagnostic.message}</span>
+                        {diagnostic.section && <small>Section: {diagnostic.section}</small>}
+                        {diagnostic.excerpt && <code>{diagnostic.excerpt}</code>}
+                      </li>
+                    ))}</ul>
+                  </div>
+                  : <p className="resume-import-clean">No parser issues detected. Compare the section counts and preview with your source before continuing.</p>}
+              </>
+              : <p className="markdown-review-empty">Paste Markdown to see detected sections and import checks.</p>}
           </div>
-        </form>
-        {parsed && <div className="resume-import-review" aria-live="polite">
-          <div className="resume-import-counts">
-            <div><strong>{parsed.profile.name || 'Name not found'}</strong><span>Profile</span></div>
-            <div><strong>{parsed.sections.length}</strong><span>Sections</span></div>
-            <div><strong>{itemCount}</strong><span>Entries & skills</span></div>
-          </div>
-          <ul className="resume-import-sections">{parsed.sections.map((section) => {
-            const sectionItems = section.items.length + section.subsections.reduce((total, subsection) => total + subsection.items.length, 0)
-            return <li key={section.id}><span>{section.heading}</span><small>{section.type === 'summary' ? 'Summary' : `${section.subsections.length ? `${section.subsections.length} groups · ` : ''}${sectionItems} items`}</small></li>
-          })}</ul>
-          {parsed.warnings.length > 0 && <div className="resume-import-warnings"><strong>Check after import</strong><ul>{parsed.warnings.map((warning) => <li key={warning}>{warning}</li>)}</ul></div>}
-          {confirming
-            ? <div className="resume-import-confirm" role="alert">
-              <p>This replaces the current CV profile and sections. Your page size, typography, and layout settings will stay the same.</p>
-              <div className="modal-actions"><button className="cancel-button" type="button" onClick={() => setConfirming(false)}>Back to review</button><button className="confirm-button" type="button" onClick={() => onApply(parsed)}>Yes, replace CV</button></div>
+        </section>
+        <section className="preview-workspace markdown-studio-preview" aria-label="Live CV preview">
+          <div className="preview-toolbar">
+            <div><span className="preview-label">LIVE PREVIEW</span><span className="preview-page"><FileText size={13} /> {currentResume.settings.pageSize} · Resume</span></div>
+            <div className="toolbar-actions">
+              <span className="markdown-preview-note">Uses your Folio design settings</span>
+              <div className="zoom-tools">
+                <button title="Zoom out" onClick={() => setZoom(Math.max(50, zoom - 5))}><Minus size={14} /></button>
+                <span>{zoom}%</span>
+                <button title="Zoom in" onClick={() => setZoom(Math.min(120, zoom + 5))}><Plus size={14} /></button>
+                <span className="zoom-separator" />
+                <button title="Fit page to preview width" onClick={fitPreview}><Maximize2 size={14} /></button>
+              </div>
             </div>
-            : <div className="resume-import-apply">
-              <span>Review the detected sections before replacing your current CV.</span>
-              <button className="export-button" type="button" onClick={() => setConfirming(true)}>Replace current CV</button>
-            </div>}
-        </div>}
-      </section>
+          </div>
+          {previewResume
+            ? <ResumePreview zoom={zoom} containerRef={previewRef} resume={previewResume} />
+            : <div className="markdown-preview-empty"><FileText size={24} /><strong>Your preview will appear here</strong><span>Paste your CV Markdown to compare the parsed result.</span></div>}
+        </section>
+      </div>
+      <footer className="markdown-studio-footer">
+        {confirming
+          ? <div className="markdown-confirm" role="alert">
+            <span>This replaces the saved CV content in Folio. Your design settings stay unchanged.</span>
+            <div><button className="cancel-button" type="button" onClick={() => setConfirming(false)}>Keep reviewing</button>
+              <button className="export-button" type="button" onClick={() => parsed && onApply(parsed)}>Replace and continue</button></div>
+          </div>
+          : <>
+            <span><Check size={13} /> Your saved Folio CV stays unchanged until you continue.</span>
+            <button className="export-button" type="button" disabled={!canContinue} onClick={() => setConfirming(true)}>Continue in Folio <ArrowRight size={15} /></button>
+          </>}
+      </footer>
     </div>
   )
 }
@@ -695,7 +762,8 @@ function App() {
   const [importError, setImportError] = useState('')
   const [resetOpen, setResetOpen] = useState(false)
   const [atsOpen, setAtsOpen] = useState(false)
-  const [resumeTextImportOpen, setResumeTextImportOpen] = useState(false)
+  const [markdownWorkspaceOpen, setMarkdownWorkspaceOpen] = useState(false)
+  const [markdownDraft, setMarkdownDraft] = useState(() => sessionStorage.getItem('folio-markdown-draft') ?? '')
   const fileInput = useRef<HTMLInputElement>(null)
   const previewRef = useRef<HTMLDivElement>(null)
 
@@ -754,7 +822,27 @@ function App() {
       sections: parsed.sections,
     })
     setActiveSection('profile')
-    setResumeTextImportOpen(false)
+    setMarkdownWorkspaceOpen(false)
+  }
+
+  function updateMarkdownDraft(source: string) {
+    setMarkdownDraft(source)
+    if (source) sessionStorage.setItem('folio-markdown-draft', source)
+    else sessionStorage.removeItem('folio-markdown-draft')
+  }
+
+  if (markdownWorkspaceOpen) {
+    return (
+      <main className="app-shell" data-theme={theme}>
+        <MarkdownCvStudio
+          source={markdownDraft}
+          onSourceChange={updateMarkdownDraft}
+          currentResume={resume}
+          onBack={() => setMarkdownWorkspaceOpen(false)}
+          onApply={applyParsedResume}
+        />
+      </main>
+    )
   }
 
   return (
@@ -764,7 +852,7 @@ function App() {
         <div className="document-name"><span className="status-dot" /> {resume.profile.name || 'Untitled resume'} <span className="document-type">· Resume</span></div>
         <div className="topbar-actions">
           <button className="topbar-button ats-open-button" onClick={() => setAtsOpen(true)}><Sparkles size={15} /> <span>Analyze CV</span></button>
-          <button className="topbar-button" type="button" onClick={() => setResumeTextImportOpen(true)} aria-label="Paste and parse CV" title="Paste and parse CV"><ClipboardPaste size={15} /> <span>Paste CV</span></button>
+          <button className="topbar-button" type="button" onClick={() => setMarkdownWorkspaceOpen(true)} aria-label="Paste CV as Markdown" title="Paste CV as Markdown"><ClipboardPaste size={15} /> <span>Paste CV</span></button>
           <button
             className="topbar-button theme-toggle"
             type="button"
@@ -805,7 +893,6 @@ function App() {
         <div className="confirm-modal" role="dialog" aria-modal="true" aria-labelledby="reset-title"><div className="modal-icon"><RotateCcw size={19} /></div><h2 id="reset-title">Start fresh?</h2><p>This replaces the current CV with the original sample data. You can export a JSON backup before continuing.</p><div className="modal-actions"><button className="cancel-button" onClick={() => setResetOpen(false)}>Keep editing</button><button className="confirm-button" onClick={() => { resetResume(); setActiveSection('profile'); setResetOpen(false) }}>Reset CV</button></div></div>
       </div>}
       {atsOpen && <AtsAnalysisModal resume={resume} onClose={() => setAtsOpen(false)} />}
-      {resumeTextImportOpen && <ResumeTextImportModal onClose={() => setResumeTextImportOpen(false)} onApply={applyParsedResume} />}
       <div className="print-root"><ResumePreview zoom={100} /></div>
     </main>
   )
