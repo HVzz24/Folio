@@ -5,10 +5,13 @@ import {
   LayoutGrid, Maximize2, Minus, Moon, Plus, Printer, RotateCcw, Settings2, Sparkles, Sun,
   Trash2, Type, Upload, X,
 } from 'lucide-react'
+import { format } from 'date-fns'
+import type { DateRange } from 'react-day-picker'
+import { DateRangePicker } from './components/DateRangePicker'
 import { downloadAtsText, downloadJson } from './lib/storage'
 import { parseResumeImport } from './lib/resumeImport'
 import { analyzeResume, type AtsAnalysis } from './lib/atsAnalysis'
-import { formatResumeDate, toMonthInputValue } from './lib/dates'
+import { formatResumeDate, toDateFromResumeValue } from './lib/dates'
 import { parseResumeText } from './lib/resumeParser'
 import { type Resume, type ResumeItem, type ResumeSection } from './types/resume'
 import { useResumeStore } from './store/resumeStore'
@@ -28,26 +31,6 @@ function Field({ label, value, onChange, multiline = false, placeholder = '' }: 
       {multiline
         ? <textarea value={value} placeholder={placeholder} onChange={(event) => onChange(event.target.value)} rows={3} />
         : <input value={value} placeholder={placeholder} onChange={(event) => onChange(event.target.value)} />}
-    </label>
-  )
-}
-
-function DatePickerField({ label, value, onChange }: {
-  label: string
-  value: string
-  onChange: (value: string) => void
-}) {
-  const monthValue = toMonthInputValue(value)
-  return (
-    <label className="field">
-      <span>{label}</span>
-      <input
-        type="month"
-        aria-label={label}
-        value={monthValue}
-        onChange={(event) => onChange(event.target.value)}
-      />
-      {value && !monthValue && <small className="date-legacy-note">Saved value: {value}. Choose a month to replace it.</small>}
     </label>
   )
 }
@@ -84,6 +67,11 @@ function EntryEditor({ section, item, index }: { section: ResumeSection; item: R
   const hasDates = Object.hasOwn(item.fields, 'start') || Object.hasOwn(item.fields, 'end')
   const isCurrent = end.toLowerCase() === 'present'
   const supportsDetails = section.type === 'custom'
+  const startDate = toDateFromResumeValue(start)
+  const endDate = isCurrent ? undefined : toDateFromResumeValue(end)
+  const range: DateRange | undefined = startDate || endDate
+    ? { from: startDate, to: endDate }
+    : undefined
 
   function updateDates(updates: { start?: string; end?: string }) {
     updateItem(section.id, item.id, { fields: { ...item.fields, ...updates } })
@@ -144,8 +132,18 @@ function EntryEditor({ section, item, index }: { section: ResumeSection; item: R
           ))}
         </div>}
         {hasDates && <>
-          <DatePickerField label="Start date" value={start} onChange={(value) => updateDates({ start: value })} />
-          {!isCurrent && <DatePickerField label="End date" value={end} onChange={(value) => updateDates({ end: value })} />}
+          <DateRangePicker
+            range={range}
+            setRange={(nextRange) => updateDates({
+              start: nextRange?.from ? format(nextRange.from, 'yyyy-MM-dd') : '',
+              end: nextRange?.to
+                ? format(nextRange.to, 'yyyy-MM-dd')
+                : nextRange?.from && isCurrent ? 'Present' : '',
+            })}
+          />
+          {(start && !startDate || end && !isCurrent && !endDate) && (
+            <small className="date-legacy-note">Saved date values could not be recognized. Choose a range to replace them.</small>
+          )}
           <label className="current-date-toggle">
             <input type="checkbox" checked={isCurrent} onChange={(event) => updateDates({ end: event.target.checked ? 'Present' : '' })} />
             <span>Ongoing / present</span>
@@ -479,12 +477,12 @@ function NumberSetting({ label, value, min, max, step = 1, onChange, unit = '' }
   )
 }
 
-function DesignSidebar({ zoom, setZoom, className = '' }: { zoom: number; setZoom: (zoom: number) => void; className?: string }) {
+function DesignSidebar({ zoom, setZoom }: { zoom: number; setZoom: (zoom: number) => void }) {
   const { settings } = useResumeStore((state) => state.resume)
   const update = useResumeStore((state) => state.updateSettings)
   const [tab, setTab] = useState<'type' | 'layout'>('type')
   return (
-    <aside className={`design-sidebar ${className}`}>
+    <aside className="design-sidebar">
       <div className="sidebar-heading"><div><span className="eyebrow">MAKE IT YOURS</span><h2>Design</h2></div><Settings2 size={17} className="muted-icon" /></div>
       <div className="settings-tabs">
         <button className={tab === 'type' ? 'selected' : ''} onClick={() => setTab('type')}><Type size={14} /> Type</button>
@@ -757,7 +755,7 @@ function App() {
   ))
   const [activeSection, setActiveSection] = useState('profile')
   const [zoom, setZoom] = useState(82)
-  const [designOpen, setDesignOpen] = useState(false)
+  const [editorMode, setEditorMode] = useState<'content' | 'design'>('content')
   const [dragId, setDragId] = useState<string | null>(null)
   const [importError, setImportError] = useState('')
   const [resetOpen, setResetOpen] = useState(false)
@@ -871,22 +869,33 @@ function App() {
         </div>
       </header>
       {importError && <div role="alert" className="import-error no-print">{importError}<button onClick={() => setImportError('')} aria-label="Dismiss error"><X size={14} /></button></div>}
-      <div className="workspace no-print">
+      <nav className="editor-mode-nav no-print" aria-label="Resume editor mode">
+        <div className="editor-mode-switch" role="group" aria-label="Choose what to edit">
+          <button type="button" aria-pressed={editorMode === 'content'} onClick={() => setEditorMode('content')}>
+            <FileText size={14} /> Content
+          </button>
+          <button type="button" aria-pressed={editorMode === 'design'} onClick={() => setEditorMode('design')}>
+            <Settings2 size={14} /> Design
+          </button>
+        </div>
+        <p>{editorMode === 'content'
+          ? 'Build your resume with focused content fields.'
+          : 'Adjust typography, spacing, and page layout.'}</p>
+      </nav>
+      <div className="workspace no-print" data-mode={editorMode}>
         <ContentSidebar active={activeSection} setActive={setActiveSection} dragId={dragId} setDragId={setDragId} />
         <section className="preview-workspace">
           <div className="preview-toolbar">
             <div><span className="preview-label">LIVE PREVIEW</span><span className="preview-page"><FileText size={13} /> {resume.settings.pageSize} · Resume</span></div>
             <div className="toolbar-actions">
-              <button className="design-toggle" onClick={() => setDesignOpen(!designOpen)}><Settings2 size={14} /> Design</button>
               <div className="zoom-tools"><button title="Zoom out" onClick={() => setZoom(Math.max(50, zoom - 5))}><Minus size={14} /></button><span>{zoom}%</span><button title="Zoom in" onClick={() => setZoom(Math.min(120, zoom + 5))}><Plus size={14} /></button><span className="zoom-separator" /><button title="Fit page to preview width" onClick={fitPreview}><Maximize2 size={14} /></button></div>
             </div>
           </div>
           <ResumePreview zoom={zoom} containerRef={previewRef} />
           <div className="preview-footnote"><Check size={12} /> Changes save automatically <span>·</span> Export a PDF to share or print</div>
         </section>
-        <DesignSidebar zoom={zoom} setZoom={setZoom} className={designOpen ? 'design-open' : ''} />
+        <DesignSidebar zoom={zoom} setZoom={setZoom} />
       </div>
-      {designOpen && <button className="design-backdrop no-print" aria-label="Close design settings" onClick={() => setDesignOpen(false)} />}
       <div className="mobile-preview no-print"><ResumePreview zoom={100} /></div>
       <footer className="app-footer no-print"><span><span className="privacy-dot" /> Private by design</span><div><button onClick={() => downloadJson(resume)}>Backup data</button><button onClick={() => setResetOpen(true)}><RotateCcw size={13} /> Reset CV</button></div></footer>
       {resetOpen && <div className="modal-backdrop no-print" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) setResetOpen(false) }}>
