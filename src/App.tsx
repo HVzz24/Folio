@@ -5,6 +5,11 @@ import {
   LayoutGrid, Maximize2, Minus, Moon, Plus, Printer, RotateCcw, Settings2, Sparkles, Sun,
   Trash2, Type, Upload, X,
 } from 'lucide-react'
+import { Button } from '@/components/ui/button'
+import { Checkbox } from '@/components/ui/checkbox'
+import { Input } from '@/components/ui/input'
+import { Select } from '@/components/ui/select'
+import { Textarea } from '@/components/ui/textarea'
 import { format } from 'date-fns'
 import type { DateRange } from 'react-day-picker'
 import { DateRangePicker } from './components/DateRangePicker'
@@ -29,8 +34,8 @@ function Field({ label, value, onChange, multiline = false, placeholder = '' }: 
     <label className={`field ${multiline ? 'field-wide' : ''}`}>
       <span>{label}</span>
       {multiline
-        ? <textarea value={value} placeholder={placeholder} onChange={(event) => onChange(event.target.value)} rows={3} />
-        : <input value={value} placeholder={placeholder} onChange={(event) => onChange(event.target.value)} />}
+        ? <Textarea value={value} placeholder={placeholder} onChange={(event) => onChange(event.target.value)} rows={3} />
+        : <Input value={value} placeholder={placeholder} onChange={(event) => onChange(event.target.value)} />}
     </label>
   )
 }
@@ -38,7 +43,7 @@ function Field({ label, value, onChange, multiline = false, placeholder = '' }: 
 function MiniButton({ title, onClick, children, danger = false, disabled = false }: {
   title: string; onClick: () => void; children: React.ReactNode; danger?: boolean; disabled?: boolean
 }) {
-  return <button className={`icon-button ${danger ? 'danger' : ''}`} type="button" title={title} aria-label={title} disabled={disabled} onClick={onClick}>{children}</button>
+  return <Button variant="ghost" size="icon" className={`icon-button ${danger ? 'danger' : ''}`} type="button" title={title} aria-label={title} disabled={disabled} onClick={onClick}>{children}</Button>
 }
 
 function getContactHref(kind: 'email' | 'phone' | 'location' | 'linkedin' | 'portfolio', value: string): string | undefined {
@@ -104,9 +109,9 @@ function EntryEditor({ section, item, index }: { section: ResumeSection; item: R
           />
         ))}
         {supportsDetails && <div className="field-wide">
-          <div className="subsection-title"><span>Custom details</span><button className="text-action" type="button" onClick={() => updateItem(section.id, item.id, {
+          <div className="subsection-title"><span>Custom details</span><Button variant="link" size="sm" className="text-action" type="button" onClick={() => updateItem(section.id, item.id, {
             details: [...item.details, { id: crypto.randomUUID(), label: '', content: '' }],
-          })}><Plus size={13} /> Add detail</button></div>
+          })}><Plus size={13} /> Add detail</Button></div>
           {item.details.map((detail) => (
             <div className="form-grid" key={detail.id}>
               <Field
@@ -145,22 +150,22 @@ function EntryEditor({ section, item, index }: { section: ResumeSection; item: R
             <small className="date-legacy-note">Saved date values could not be recognized. Choose a range to replace them.</small>
           )}
           <label className="current-date-toggle">
-            <input type="checkbox" checked={isCurrent} onChange={(event) => updateDates({ end: event.target.checked ? 'Present' : '' })} />
+            <Checkbox checked={isCurrent} onCheckedChange={(checked) => updateDates({ end: checked ? 'Present' : '' })} />
             <span>Ongoing / present</span>
           </label>
         </>}
       </div>
       <div className="entry-date-actions">
         {hasDates
-          ? <button className="text-action" type="button" onClick={removeDates}><X size={13} /> Remove dates</button>
-          : <button className="text-action" type="button" onClick={() => updateDates({ start: '', end: '' })}><Plus size={13} /> Add date range</button>}
+          ? <Button variant="link" size="sm" className="text-action" type="button" onClick={removeDates}><X size={13} /> Remove dates</Button>
+          : <Button variant="link" size="sm" className="text-action" type="button" onClick={() => updateDates({ start: '', end: '' })}><Plus size={13} /> Add date range</Button>}
       </div>
       <div className="bullet-editor">
-        <div className="subsection-title"><span>Bullet points</span><button className="text-action" onClick={() => addBullet(section.id, item.id)}><Plus size={13} /> Add bullet</button></div>
+        <div className="subsection-title"><span>Bullet points</span><Button variant="link" size="sm" className="text-action" type="button" onClick={() => addBullet(section.id, item.id)}><Plus size={13} /> Add bullet</Button></div>
         {item.bullets.map((bullet, bulletIndex) => (
           <div className="bullet-edit-row" key={`${item.id}-${bulletIndex}`}>
             <span className="bullet-dot">•</span>
-            <input value={bullet} placeholder="Describe an impact or achievement" onChange={(event) => updateBullet(section.id, item.id, bulletIndex, event.target.value)} />
+            <Input value={bullet} placeholder="Describe an impact or achievement" onChange={(event) => updateBullet(section.id, item.id, bulletIndex, event.target.value)} />
             <MiniButton title="Move bullet up" disabled={bulletIndex === 0} onClick={() => moveBullet(section.id, item.id, bulletIndex, -1)}><ArrowUp size={13} /></MiniButton>
             <MiniButton title="Move bullet down" disabled={bulletIndex === item.bullets.length - 1} onClick={() => moveBullet(section.id, item.id, bulletIndex, 1)}><ArrowDown size={13} /></MiniButton>
             <MiniButton title="Remove bullet" danger onClick={() => deleteBullet(section.id, item.id, bulletIndex)}><X size={13} /></MiniButton>
@@ -178,7 +183,7 @@ function ListSectionEditor({ section }: { section: ResumeSection }) {
       {section.subsections.map((subsection, index) => (
         <div className="subsection-editor" key={subsection.id}>
           <div className="subsection-heading-edit">
-            <input aria-label="Subsection heading" value={subsection.heading} onChange={(event) => updateSubsection(section.id, subsection.id, { heading: event.target.value })} />
+            <Input aria-label="Subsection heading" value={subsection.heading} onChange={(event) => updateSubsection(section.id, subsection.id, { heading: event.target.value })} />
             <MiniButton title="Move subsection up" disabled={index === 0} onClick={() => moveSubsection(section.id, subsection.id, -1)}><ArrowUp size={13} /></MiniButton>
             <MiniButton title="Move subsection down" disabled={index === section.subsections.length - 1} onClick={() => moveSubsection(section.id, subsection.id, 1)}><ArrowDown size={13} /></MiniButton>
             <MiniButton title="Delete subsection" danger onClick={() => deleteSubsection(section.id, subsection.id)}><Trash2 size={14} /></MiniButton>
@@ -186,16 +191,16 @@ function ListSectionEditor({ section }: { section: ResumeSection }) {
           {subsection.items.map((item, index) => (
             <div className="list-edit-row" key={`${subsection.id}-${index}`}>
               <span className="bullet-dot">•</span>
-              <input value={item} placeholder="Add information" onChange={(event) => updateListItem(section.id, subsection.id, index, event.target.value)} />
+              <Input value={item} placeholder="Add information" onChange={(event) => updateListItem(section.id, subsection.id, index, event.target.value)} />
               <MiniButton title="Move up" disabled={index === 0} onClick={() => moveListItem(section.id, subsection.id, index, -1)}><ArrowUp size={13} /></MiniButton>
               <MiniButton title="Move down" disabled={index === subsection.items.length - 1} onClick={() => moveListItem(section.id, subsection.id, index, 1)}><ArrowDown size={13} /></MiniButton>
               <MiniButton title="Remove item" danger onClick={() => deleteListItem(section.id, subsection.id, index)}><X size={13} /></MiniButton>
             </div>
           ))}
-          <button className="text-action add-list-item" onClick={() => addListItem(section.id, subsection.id)}><Plus size={13} /> Add item</button>
+          <Button variant="link" size="sm" className="text-action add-list-item" type="button" onClick={() => addListItem(section.id, subsection.id)}><Plus size={13} /> Add item</Button>
         </div>
       ))}
-      <button className="outline-action" onClick={() => addSubsection(section.id)}><Plus size={14} /> Add subsection</button>
+      <Button variant="outline" className="outline-action" type="button" onClick={() => addSubsection(section.id)}><Plus size={14} /> Add subsection</Button>
     </div>
   )
 }
@@ -227,10 +232,10 @@ function ContentSidebar({ active, setActive, dragId, setDragId }: {
       </div>
       <div className="accordion-list">
         <section className={`accordion ${active === 'profile' ? 'open' : ''}`}>
-          <button className="accordion-trigger" onClick={() => setActive(active === 'profile' ? '' : 'profile')}>
+          <Button variant="ghost" className="accordion-trigger" type="button" onClick={() => setActive(active === 'profile' ? '' : 'profile')}>
             <span className="accordion-icon"><Sparkles size={16} /></span><span className="accordion-name">Personal profile<small>Name, contact & summary</small></span>
             {active === 'profile' ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
-          </button>
+          </Button>
           {active === 'profile' && <div className="accordion-content">
             <div className="form-grid">
               <Field label="Full name" value={profile.name} onChange={(value) => store.updateProfile('name', value)} />
@@ -242,11 +247,7 @@ function ContentSidebar({ active, setActive, dragId, setDragId }: {
               <Field label="Portfolio" value={profile.portfolio} onChange={(value) => store.updateProfile('portfolio', value)} />
               <label className="summary-toggle">
                 <span><strong>Clickable hyperlinks</strong><small>Link email, phone, LinkedIn & portfolio</small></span>
-                <input
-                  type="checkbox"
-                  checked={profile.hyperlinksEnabled}
-                  onChange={(event) => store.updateProfile('hyperlinksEnabled', event.target.checked)}
-                />
+                <Checkbox checked={profile.hyperlinksEnabled} onCheckedChange={(checked) => store.updateProfile('hyperlinksEnabled', checked)} />
               </label>
               <label className="field field-wide"><span>Profile photo (optional)</span><input type="file" accept="image/*" onChange={(event) => {
                 const file = event.target.files?.[0]
@@ -256,7 +257,7 @@ function ContentSidebar({ active, setActive, dragId, setDragId }: {
                 reader.onerror = () => window.alert('The selected image could not be read.')
                 reader.readAsDataURL(file)
               }} /></label>
-              {profile.photo && <button className="text-action" onClick={() => store.updateProfile('photo', '')}><X size={13} /> Remove photo</button>}
+              {profile.photo && <Button variant="link" size="sm" className="text-action" type="button" onClick={() => store.updateProfile('photo', '')}><X size={13} /> Remove photo</Button>}
             </div>
           </div>}
         </section>
@@ -279,7 +280,7 @@ function ContentSidebar({ active, setActive, dragId, setDragId }: {
                 }}
                 onDragEnd={() => setDragId(null)}
               ><GripVertical size={15} /></span>
-              <button className="accordion-trigger section-trigger" onClick={() => setActive(active === section.id ? '' : section.id)}>
+              <Button variant="ghost" className="accordion-trigger section-trigger" type="button" onClick={() => setActive(active === section.id ? '' : section.id)}>
                 <span className="accordion-name">{section.heading || 'Untitled section'}<small>{section.type === 'summary'
                   ? 'Summary statement'
                   : [
@@ -290,7 +291,7 @@ function ContentSidebar({ active, setActive, dragId, setDragId }: {
                   ].filter(Boolean).join(' · ') || '0 items'
                 }</small></span>
                 {active === section.id ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
-              </button>
+              </Button>
               <MiniButton title={section.enabled ? 'Hide section' : 'Show section'} onClick={() => toggleSection(section)}>{section.enabled ? <Eye size={15} /> : <EyeOff size={15} />}</MiniButton>
             </div>
             {active === section.id && <div className="accordion-content section-content">
@@ -302,11 +303,11 @@ function ContentSidebar({ active, setActive, dragId, setDragId }: {
                 </>
                 : <>
                   {section.items.map((item, itemIndex) => <EntryEditor key={item.id} section={section} item={item} index={itemIndex} />)}
-                  <button className="outline-action" onClick={() => store.addItem(section.id)}><Plus size={14} /> Add {section.type === 'education' ? 'education' : section.type === 'experience' ? 'position' : 'entry'}</button>
+                  <Button variant="outline" className="outline-action" type="button" onClick={() => store.addItem(section.id)}><Plus size={14} /> Add {section.type === 'education' ? 'education' : section.type === 'experience' ? 'position' : 'entry'}</Button>
                   <div className="subsections"><ListSectionEditor section={section} /></div>
                 </>}
               {section.type === 'custom' && section.items.length === 0 && section.subsections.length === 0 && <p className="helper-copy">Start with an entry or create titled subsections and list items.</p>}
-              {section.type === 'custom' && <button className="remove-section" onClick={() => store.deleteSection(section.id)}><Trash2 size={14} /> Delete section</button>}
+              {section.type === 'custom' && <Button variant="link" size="sm" className="remove-section" type="button" onClick={() => store.deleteSection(section.id)}><Trash2 size={14} /> Delete section</Button>}
             </div>}
             {index !== resume.sections.length - 1 && <div className="section-separator" />}
           </section>
@@ -318,8 +319,8 @@ function ContentSidebar({ active, setActive, dragId, setDragId }: {
             setNewHeading('')
           }
         }}>
-          <input value={newHeading} onChange={(event) => setNewHeading(event.target.value)} placeholder="Create a custom section" aria-label="Custom section heading" />
-          <button aria-label="Add section" type="submit"><Plus size={16} /></button>
+          <Input value={newHeading} onChange={(event) => setNewHeading(event.target.value)} placeholder="Create a custom section" aria-label="Custom section heading" />
+          <Button aria-label="Add section" variant="default" size="icon" type="submit"><Plus size={16} /></Button>
         </form>
       </div>
     </aside>
@@ -468,7 +469,7 @@ function NumberSetting({ label, value, min, max, step = 1, onChange, unit = '' }
   return (
     <label className="setting-number">
       <span>{label}</span>
-      <div className="number-control"><input type="number" min={min} max={max} step={step} value={value} onChange={(event) => {
+      <div className="number-control"><Input type="number" min={min} max={max} step={step} value={value} onChange={(event) => {
         const next = Number(event.target.value)
         if (Number.isFinite(next)) onChange(Math.min(max, Math.max(min, next)))
       }} /><small>{unit}</small></div>
@@ -485,18 +486,29 @@ function DesignSidebar({ zoom, setZoom }: { zoom: number; setZoom: (zoom: number
     <aside className="design-sidebar">
       <div className="sidebar-heading"><div><span className="eyebrow">MAKE IT YOURS</span><h2>Design</h2></div><Settings2 size={17} className="muted-icon" /></div>
       <div className="settings-tabs">
-        <button className={tab === 'type' ? 'selected' : ''} onClick={() => setTab('type')}><Type size={14} /> Type</button>
-        <button className={tab === 'layout' ? 'selected' : ''} onClick={() => setTab('layout')}><LayoutGrid size={14} /> Layout</button>
+        <Button variant={tab === 'type' ? 'secondary' : 'ghost'} size="sm" className={tab === 'type' ? 'selected' : ''} type="button" onClick={() => setTab('type')}><Type size={14} /> Type</Button>
+        <Button variant={tab === 'layout' ? 'secondary' : 'ghost'} size="sm" className={tab === 'layout' ? 'selected' : ''} type="button" onClick={() => setTab('layout')}><LayoutGrid size={14} /> Layout</Button>
       </div>
       {tab === 'type' ? <div className="settings-content">
         <div className="setting-group">
           <div className="setting-group-heading"><Type size={15} /><strong>Typography</strong></div>
-          <label className="select-setting"><span>Font family</span><select value={settings.fontFamily} onChange={(event) => update('fontFamily', event.target.value)}>
-            {['Arial', 'Calibri', 'Carlito', 'Inter', 'Roboto', 'Lato', 'Times New Roman', 'Georgia'].map((font) => <option key={font}>{font}</option>)}
-          </select></label>
-          <label className="select-setting"><span>Font weight</span><select value={settings.fontWeight} onChange={(event) => update('fontWeight', event.target.value)}>
-            <option value="400">Regular</option><option value="500">Medium</option><option value="600">Semibold</option><option value="700">Bold</option>
-          </select></label>
+          <div className="select-setting"><span>Font family</span><Select
+            aria-label="Font family"
+            value={settings.fontFamily}
+            onValueChange={(value) => update('fontFamily', value)}
+            options={['Arial', 'Calibri', 'Carlito', 'Inter', 'Roboto', 'Lato', 'Times New Roman', 'Georgia'].map((font) => ({ value: font, label: font }))}
+          /></div>
+          <div className="select-setting"><span>Font weight</span><Select
+            aria-label="Font weight"
+            value={settings.fontWeight}
+            onValueChange={(value) => update('fontWeight', value)}
+            options={[
+              { value: '400', label: 'Regular' },
+              { value: '500', label: 'Medium' },
+              { value: '600', label: 'Semibold' },
+              { value: '700', label: 'Bold' },
+            ]}
+          /></div>
           {TYPE_SETTINGS.map((setting) => <NumberSetting key={setting.key} label={setting.label} value={settings[setting.key]} min={setting.min} max={setting.max} step={0.5} unit="pt" onChange={(value) => update(setting.key, value)} />)}
           <NumberSetting label="Line height" value={settings.lineHeight} min={1} max={2} step={0.05} onChange={(value) => update('lineHeight', value)} unit="×" />
           <NumberSetting label="Letter spacing" value={settings.letterSpacing} min={-0.5} max={2} step={0.1} onChange={(value) => update('letterSpacing', value)} unit="px" />
@@ -504,16 +516,29 @@ function DesignSidebar({ zoom, setZoom }: { zoom: number; setZoom: (zoom: number
         <div className="setting-group">
           <div className="setting-group-heading"><AlignLeft size={15} /><strong>Alignment</strong></div>
           <div className="segmented alignment-options">
-            <button className={settings.alignment === 'left' ? 'active' : ''} aria-pressed={settings.alignment === 'left'} onClick={() => update('alignment', 'left')}><AlignLeft size={15} /> Left</button>
-            <button className={settings.alignment === 'justify' ? 'active' : ''} aria-pressed={settings.alignment === 'justify'} onClick={() => update('alignment', 'justify')}><AlignJustify size={15} /> Justify</button>
-            <button className={settings.alignment === 'center' ? 'active' : ''} aria-pressed={settings.alignment === 'center'} onClick={() => update('alignment', 'center')}><AlignCenter size={15} /> Center</button>
+            <Button variant={settings.alignment === 'left' ? 'secondary' : 'outline'} size="sm" className={settings.alignment === 'left' ? 'active' : ''} type="button" aria-pressed={settings.alignment === 'left'} onClick={() => update('alignment', 'left')}><AlignLeft size={15} /> Left</Button>
+            <Button variant={settings.alignment === 'justify' ? 'secondary' : 'outline'} size="sm" className={settings.alignment === 'justify' ? 'active' : ''} type="button" aria-pressed={settings.alignment === 'justify'} onClick={() => update('alignment', 'justify')}><AlignJustify size={15} /> Justify</Button>
+            <Button variant={settings.alignment === 'center' ? 'secondary' : 'outline'} size="sm" className={settings.alignment === 'center' ? 'active' : ''} type="button" aria-pressed={settings.alignment === 'center'} onClick={() => update('alignment', 'center')}><AlignCenter size={15} /> Center</Button>
           </div>
         </div>
       </div> : <div className="settings-content">
         <div className="setting-group">
           <div className="setting-group-heading"><LayoutGrid size={15} /><strong>Page & layout</strong></div>
-          <label className="select-setting"><span>Paper size</span><select value={settings.pageSize} onChange={(event) => update('pageSize', event.target.value)}><option>A4</option><option>Letter</option></select></label>
-          <label className="select-setting"><span>Columns</span><select value={settings.layout} onChange={(event) => update('layout', event.target.value)}><option value="single">Single column · ATS friendly</option><option value="two">Two columns</option></select></label>
+          <div className="select-setting"><span>Paper size</span><Select
+            aria-label="Paper size"
+            value={settings.pageSize}
+            onValueChange={(value) => update('pageSize', value)}
+            options={[{ value: 'A4', label: 'A4' }, { value: 'Letter', label: 'Letter' }]}
+          /></div>
+          <div className="select-setting"><span>Columns</span><Select
+            aria-label="Columns"
+            value={settings.layout}
+            onValueChange={(value) => update('layout', value)}
+            options={[
+              { value: 'single', label: 'Single column · ATS friendly' },
+              { value: 'two', label: 'Two columns' },
+            ]}
+          /></div>
           <NumberSetting label="Top margin" value={settings.marginTop} min={5} max={35} onChange={(value) => update('marginTop', value)} unit="mm" />
           <NumberSetting label="Bottom margin" value={settings.marginBottom} min={5} max={35} onChange={(value) => update('marginBottom', value)} unit="mm" />
           <NumberSetting label="Side margins" value={settings.marginSide} min={5} max={35} onChange={(value) => update('marginSide', value)} unit="mm" />
@@ -524,7 +549,7 @@ function DesignSidebar({ zoom, setZoom }: { zoom: number; setZoom: (zoom: number
           <NumberSetting label="Bullet spacing" value={settings.bulletSpacing} min={0} max={12} onChange={(value) => update('bulletSpacing', value)} unit="px" />
           <NumberSetting label="Paragraph spacing" value={settings.paragraphSpacing} min={0} max={16} onChange={(value) => update('paragraphSpacing', value)} unit="px" />
           <NumberSetting label="Divider thickness" value={settings.dividerThickness} min={0.2} max={2} step={0.1} onChange={(value) => update('dividerThickness', value)} unit="px" />
-          <label className="toggle-setting"><span>Section dividers</span><input type="checkbox" checked={settings.showDivider} onChange={(event) => update('showDivider', event.target.checked)} /></label>
+          <label className="toggle-setting"><span>Section dividers</span><Checkbox checked={settings.showDivider} onCheckedChange={(checked) => update('showDivider', checked)} /></label>
         </div>
         <div className="setting-group">
           <div className="setting-group-heading"><Eye size={15} /><strong>Preview zoom</strong></div>
@@ -555,15 +580,15 @@ function AtsAnalysisModal({ resume, onClose }: { resume: ReturnType<typeof useRe
       <section className="ats-modal" role="dialog" aria-modal="true" aria-labelledby="ats-title">
         <header className="ats-modal-header">
           <div><span className="eyebrow">PRIVATE · LOCAL ANALYSIS</span><h2 id="ats-title">ATS match analysis</h2></div>
-          <button className="icon-button" type="button" aria-label="Close analysis" onClick={onClose}><X size={17} /></button>
+          <Button variant="ghost" size="icon" className="icon-button" type="button" aria-label="Close analysis" onClick={onClose}><X size={17} /></Button>
         </header>
         <p className="ats-intro">Compare your current CV with a job description. This transparent, rule-based estimate runs in your browser; it is not an employer’s actual ATS score.</p>
         <form className="ats-form" onSubmit={runAnalysis}>
-          <label className="field"><span>Job title <small>Optional</small></span><input value={jobTitle} onChange={(event) => setJobTitle(event.target.value)} placeholder="e.g. Business Analyst" /></label>
-          <label className="field"><span>Job description</span><textarea value={jobDescription} onChange={(event) => setJobDescription(event.target.value)} rows={8} required placeholder="Paste the full job description here…" /></label>
+          <label className="field"><span>Job title <small>Optional</small></span><Input value={jobTitle} onChange={(event) => setJobTitle(event.target.value)} placeholder="e.g. Business Analyst" /></label>
+          <label className="field"><span>Job description</span><Textarea value={jobDescription} onChange={(event) => setJobDescription(event.target.value)} rows={8} required placeholder="Paste the full job description here…" /></label>
           <div className="ats-form-footer">
             <span>Job description stays in memory only. Re-run after CV edits to refresh the score.</span>
-            <button className="export-button" type="submit" disabled={!canAnalyze}><Sparkles size={15} /> {analysis ? 'Update analysis' : 'Analyze CV'}</button>
+            <Button className="export-button" type="submit" disabled={!canAnalyze}><Sparkles size={15} /> {analysis ? 'Update analysis' : 'Analyze CV'}</Button>
           </div>
         </form>
         {analysis && <div className="ats-results" aria-live="polite">
@@ -644,24 +669,24 @@ function MarkdownCvStudio({ source, onSourceChange, currentResume, onBack, onApp
   return (
     <div className="markdown-studio">
       <header className="markdown-studio-header">
-        <button className="topbar-button markdown-back-button" type="button" onClick={onBack}><ArrowLeft size={15} /> Back to Folio</button>
+        <Button variant="ghost" className="topbar-button markdown-back-button" type="button" onClick={onBack}><ArrowLeft size={15} /> Back to Folio</Button>
         <div className="markdown-studio-title"><span className="eyebrow">FOLIO · MARKDOWN REVIEW</span><h1>Preview your CV</h1></div>
         <span className="markdown-studio-privacy"><Check size={13} /> Draft stays in this tab</span>
       </header>
       <div className="markdown-studio-mobile-tabs" role="tablist" aria-label="Markdown and preview">
-        <button type="button" role="tab" aria-selected={mobileView === 'source'} className={mobileView === 'source' ? 'selected' : ''} onClick={() => setMobileView('source')}>Markdown</button>
-        <button type="button" role="tab" aria-selected={mobileView === 'preview'} className={mobileView === 'preview' ? 'selected' : ''} onClick={() => setMobileView('preview')}>Live preview</button>
+        <Button variant={mobileView === 'source' ? 'secondary' : 'ghost'} size="sm" type="button" role="tab" aria-selected={mobileView === 'source'} className={mobileView === 'source' ? 'selected' : ''} onClick={() => setMobileView('source')}>Markdown</Button>
+        <Button variant={mobileView === 'preview' ? 'secondary' : 'ghost'} size="sm" type="button" role="tab" aria-selected={mobileView === 'preview'} className={mobileView === 'preview' ? 'selected' : ''} onClick={() => setMobileView('preview')}>Live preview</Button>
       </div>
       <div className="markdown-studio-grid" data-mobile-view={mobileView}>
         <section className="markdown-source-panel" aria-label="Markdown CV editor">
           <div className="markdown-source-heading">
             <div><span className="eyebrow">SOURCE</span><h2>CV content</h2><p>Edit the Markdown; the preview updates as you type.</p></div>
-            <button className="text-action markdown-clear-button" type="button" disabled={!source} onClick={() => {
+            <Button variant="link" size="sm" className="text-action markdown-clear-button" type="button" disabled={!source} onClick={() => {
               onSourceChange('')
               setConfirming(false)
-            }}><X size={13} /> Clear</button>
+            }}><X size={13} /> Clear</Button>
           </div>
-          <textarea
+          <Textarea
             aria-label="CV Markdown source"
             className="markdown-source-editor"
             value={source}
@@ -718,11 +743,11 @@ function MarkdownCvStudio({ source, onSourceChange, currentResume, onBack, onApp
             <div className="toolbar-actions">
               <span className="markdown-preview-note">Uses your Folio design settings</span>
               <div className="zoom-tools">
-                <button title="Zoom out" onClick={() => setZoom(Math.max(50, zoom - 5))}><Minus size={14} /></button>
+                <Button variant="outline" size="icon" title="Zoom out" type="button" onClick={() => setZoom(Math.max(50, zoom - 5))}><Minus size={14} /></Button>
                 <span>{zoom}%</span>
-                <button title="Zoom in" onClick={() => setZoom(Math.min(120, zoom + 5))}><Plus size={14} /></button>
+                <Button variant="outline" size="icon" title="Zoom in" type="button" onClick={() => setZoom(Math.min(120, zoom + 5))}><Plus size={14} /></Button>
                 <span className="zoom-separator" />
-                <button title="Fit page to preview width" onClick={fitPreview}><Maximize2 size={14} /></button>
+                <Button variant="outline" size="icon" title="Fit page to preview width" type="button" onClick={fitPreview}><Maximize2 size={14} /></Button>
               </div>
             </div>
           </div>
@@ -735,12 +760,12 @@ function MarkdownCvStudio({ source, onSourceChange, currentResume, onBack, onApp
         {confirming
           ? <div className="markdown-confirm" role="alert">
             <span>This replaces the saved CV content in Folio. Your design settings stay unchanged.</span>
-            <div><button className="cancel-button" type="button" onClick={() => setConfirming(false)}>Keep reviewing</button>
-              <button className="export-button" type="button" onClick={() => parsed && onApply(parsed)}>Replace and continue</button></div>
+            <div><Button variant="outline" className="cancel-button" type="button" onClick={() => setConfirming(false)}>Keep reviewing</Button>
+              <Button className="export-button" type="button" onClick={() => parsed && onApply(parsed)}>Replace and continue</Button></div>
           </div>
           : <>
             <span><Check size={13} /> Your saved Folio CV stays unchanged until you continue.</span>
-            <button className="export-button" type="button" disabled={!canContinue} onClick={() => setConfirming(true)}>Continue in Folio <ArrowRight size={15} /></button>
+            <Button className="export-button" type="button" disabled={!canContinue} onClick={() => setConfirming(true)}>Continue in Folio <ArrowRight size={15} /></Button>
           </>}
       </footer>
     </div>
@@ -849,34 +874,35 @@ function App() {
         <div className="brand"><div className="brand-mark">f.</div><div><strong>folio</strong><span>RESUME STUDIO</span></div></div>
         <div className="document-name"><span className="status-dot" /> {resume.profile.name || 'Untitled resume'} <span className="document-type">· Resume</span></div>
         <div className="topbar-actions">
-          <button className="topbar-button ats-open-button" onClick={() => setAtsOpen(true)}><Sparkles size={15} /> <span>Analyze CV</span></button>
-          <button className="topbar-button" type="button" onClick={() => setMarkdownWorkspaceOpen(true)} aria-label="Paste CV as Markdown" title="Paste CV as Markdown"><ClipboardPaste size={15} /> <span>Paste CV</span></button>
-          <button
+          <Button variant="ghost" className="topbar-button ats-open-button" type="button" onClick={() => setAtsOpen(true)}><Sparkles size={15} /> <span>Analyze CV</span></Button>
+          <Button variant="ghost" className="topbar-button" type="button" onClick={() => setMarkdownWorkspaceOpen(true)} aria-label="Paste CV as Markdown" title="Paste CV as Markdown"><ClipboardPaste size={15} /> <span>Paste CV</span></Button>
+          <Button
+            variant="ghost"
             className="topbar-button theme-toggle"
             type="button"
             aria-label={`Switch to ${theme === 'dark' ? 'light' : 'dark'} mode`}
             aria-pressed={theme === 'dark'}
             title={`Switch to ${theme === 'dark' ? 'light' : 'dark'} mode`}
             onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
-          >{theme === 'dark' ? <Sun size={15} /> : <Moon size={15} />} <span>{theme === 'dark' ? 'Light mode' : 'Dark mode'}</span></button>
-          <button className="topbar-button" onClick={() => fileInput.current?.click()}><Upload size={15} /> <span>Import</span></button>
+          >{theme === 'dark' ? <Sun size={15} /> : <Moon size={15} />} <span>{theme === 'dark' ? 'Light mode' : 'Dark mode'}</span></Button>
+          <Button variant="ghost" className="topbar-button" type="button" onClick={() => fileInput.current?.click()}><Upload size={15} /> <span>Import</span></Button>
           <input ref={fileInput} hidden type="file" accept="application/json,.json" onChange={(event) => void importFile(event.target.files?.[0])} />
-          <button className="topbar-button" onClick={() => downloadJson(resume)}><FileJson2 size={15} /> <span>Export JSON</span></button>
-          <button className="topbar-button" onClick={() => downloadAtsText(resume)}><FileText size={15} /> <span>Export TXT</span></button>
+          <Button variant="ghost" className="topbar-button" type="button" onClick={() => downloadJson(resume)}><FileJson2 size={15} /> <span>Export JSON</span></Button>
+          <Button variant="ghost" className="topbar-button" type="button" onClick={() => downloadAtsText(resume)}><FileText size={15} /> <span>Export TXT</span></Button>
           <span className="topbar-divider" />
-          <button className="export-button" onClick={() => printResume(resume.settings)}><ArrowDownToLine size={16} /> Export PDF</button>
-          <button className="print-icon" title="Print resume" aria-label="Print resume" onClick={() => printResume(resume.settings)}><Printer size={16} /></button>
+          <Button className="export-button" type="button" onClick={() => printResume(resume.settings)}><ArrowDownToLine size={16} /> Export PDF</Button>
+          <Button variant="ghost" size="icon" className="print-icon" type="button" title="Print resume" aria-label="Print resume" onClick={() => printResume(resume.settings)}><Printer size={16} /></Button>
         </div>
       </header>
-      {importError && <div role="alert" className="import-error no-print">{importError}<button onClick={() => setImportError('')} aria-label="Dismiss error"><X size={14} /></button></div>}
+      {importError && <div role="alert" className="import-error no-print">{importError}<Button variant="ghost" size="icon" type="button" onClick={() => setImportError('')} aria-label="Dismiss error"><X size={14} /></Button></div>}
       <nav className="editor-mode-nav no-print" aria-label="Resume editor mode">
         <div className="editor-mode-switch" role="group" aria-label="Choose what to edit">
-          <button type="button" aria-pressed={editorMode === 'content'} onClick={() => setEditorMode('content')}>
+          <Button variant={editorMode === 'content' ? 'secondary' : 'ghost'} size="sm" type="button" aria-pressed={editorMode === 'content'} onClick={() => setEditorMode('content')}>
             <FileText size={14} /> Content
-          </button>
-          <button type="button" aria-pressed={editorMode === 'design'} onClick={() => setEditorMode('design')}>
+          </Button>
+          <Button variant={editorMode === 'design' ? 'secondary' : 'ghost'} size="sm" type="button" aria-pressed={editorMode === 'design'} onClick={() => setEditorMode('design')}>
             <Settings2 size={14} /> Design
-          </button>
+          </Button>
         </div>
         <p>{editorMode === 'content'
           ? 'Build your resume with focused content fields.'
@@ -888,7 +914,7 @@ function App() {
           <div className="preview-toolbar">
             <div><span className="preview-label">LIVE PREVIEW</span><span className="preview-page"><FileText size={13} /> {resume.settings.pageSize} · Resume</span></div>
             <div className="toolbar-actions">
-              <div className="zoom-tools"><button title="Zoom out" onClick={() => setZoom(Math.max(50, zoom - 5))}><Minus size={14} /></button><span>{zoom}%</span><button title="Zoom in" onClick={() => setZoom(Math.min(120, zoom + 5))}><Plus size={14} /></button><span className="zoom-separator" /><button title="Fit page to preview width" onClick={fitPreview}><Maximize2 size={14} /></button></div>
+              <div className="zoom-tools"><Button variant="outline" size="icon" title="Zoom out" type="button" onClick={() => setZoom(Math.max(50, zoom - 5))}><Minus size={14} /></Button><span>{zoom}%</span><Button variant="outline" size="icon" title="Zoom in" type="button" onClick={() => setZoom(Math.min(120, zoom + 5))}><Plus size={14} /></Button><span className="zoom-separator" /><Button variant="outline" size="icon" title="Fit page to preview width" type="button" onClick={fitPreview}><Maximize2 size={14} /></Button></div>
             </div>
           </div>
           <ResumePreview zoom={zoom} containerRef={previewRef} />
@@ -897,9 +923,9 @@ function App() {
         <DesignSidebar zoom={zoom} setZoom={setZoom} />
       </div>
       <div className="mobile-preview no-print"><ResumePreview zoom={100} /></div>
-      <footer className="app-footer no-print"><span><span className="privacy-dot" /> Private by design</span><div><button onClick={() => downloadJson(resume)}>Backup data</button><button onClick={() => setResetOpen(true)}><RotateCcw size={13} /> Reset CV</button></div></footer>
+      <footer className="app-footer no-print"><span><span className="privacy-dot" /> Private by design</span><div><Button variant="link" size="sm" type="button" onClick={() => downloadJson(resume)}>Backup data</Button><Button variant="link" size="sm" type="button" onClick={() => setResetOpen(true)}><RotateCcw size={13} /> Reset CV</Button></div></footer>
       {resetOpen && <div className="modal-backdrop no-print" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) setResetOpen(false) }}>
-        <div className="confirm-modal" role="dialog" aria-modal="true" aria-labelledby="reset-title"><div className="modal-icon"><RotateCcw size={19} /></div><h2 id="reset-title">Start fresh?</h2><p>This replaces the current CV with the original sample data. You can export a JSON backup before continuing.</p><div className="modal-actions"><button className="cancel-button" onClick={() => setResetOpen(false)}>Keep editing</button><button className="confirm-button" onClick={() => { resetResume(); setActiveSection('profile'); setResetOpen(false) }}>Reset CV</button></div></div>
+        <div className="confirm-modal" role="dialog" aria-modal="true" aria-labelledby="reset-title"><div className="modal-icon"><RotateCcw size={19} /></div><h2 id="reset-title">Start fresh?</h2><p>This replaces the current CV with the original sample data. You can export a JSON backup before continuing.</p><div className="modal-actions"><Button variant="outline" className="cancel-button" type="button" onClick={() => setResetOpen(false)}>Keep editing</Button><Button variant="destructive" className="confirm-button" type="button" onClick={() => { resetResume(); setActiveSection('profile'); setResetOpen(false) }}>Reset CV</Button></div></div>
       </div>}
       {atsOpen && <AtsAnalysisModal resume={resume} onClose={() => setAtsOpen(false)} />}
       <div className="print-root"><ResumePreview zoom={100} /></div>

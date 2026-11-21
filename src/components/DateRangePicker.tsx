@@ -3,18 +3,13 @@
 import { Popover as BasePopover } from '@base-ui/react/popover'
 import { format } from 'date-fns'
 import { CalendarIcon } from 'lucide-react'
-import { forwardRef, useState, type ButtonHTMLAttributes, type PropsWithChildren } from 'react'
+import { useState, type PropsWithChildren } from 'react'
 import { DayPicker as Calendar, type DateRange } from 'react-day-picker'
 import 'react-day-picker/style.css'
+import { Button } from '@/components/ui/button'
 
 const Popover = BasePopover.Root
 const PopoverTrigger = BasePopover.Trigger
-
-const Button = forwardRef<HTMLButtonElement, ButtonHTMLAttributes<HTMLButtonElement>>(
-  function Button(props, ref) {
-    return <button ref={ref} {...props} />
-  },
-)
 
 function PopoverContent({ children }: PropsWithChildren) {
   return (
@@ -49,7 +44,7 @@ export function DateRangePicker({ range, setRange }: {
       <span>Start and end dates</span>
       <Popover open={open} onOpenChange={setOpen}>
         <PopoverTrigger
-          render={<Button type="button" className="date-range-trigger" />}
+          render={<Button variant="outline" type="button" className="date-range-trigger" />}
         >
           <CalendarIcon size={15} aria-hidden="true" />
           <span>{label}</span>
