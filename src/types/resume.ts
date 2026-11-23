@@ -66,6 +66,7 @@ export const resumeSchema = z.object({
   settings: z.object({
     pageSize: z.enum(['A4', 'Letter']),
     layout: z.enum(['single', 'two']),
+    accentColor: z.enum(['#365a42', '#2f4d75', '#6e4668', '#99513d', '#263238']).default('#365a42'),
     fontFamily: z.string(),
     nameFontSize: z.number(),
     titleFontSize: z.number(),

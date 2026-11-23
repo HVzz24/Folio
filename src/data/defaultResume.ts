@@ -161,8 +161,9 @@ export const defaultResume: Resume = {
     },
   ],
   settings: {
-    pageSize: 'Letter',
+    pageSize: 'A4',
     layout: 'single',
+    accentColor: '#365a42',
     fontFamily: 'Carlito',
     nameFontSize: 25,
     titleFontSize: 10,

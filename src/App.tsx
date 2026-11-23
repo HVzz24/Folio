@@ -27,6 +27,32 @@ const FIELD_LABELS: Record<string, string> = {
   company: 'Company', position: 'Position', name: 'Project name', category: 'Category',
 }
 
+const RESUME_COLORS = [
+  { name: 'Forest', value: '#365a42' },
+  { name: 'Navy', value: '#2f4d75' },
+  { name: 'Plum', value: '#6e4668' },
+  { name: 'Terracotta', value: '#99513d' },
+  { name: 'Charcoal', value: '#263238' },
+]
+
+const RESUME_TEMPLATES: { name: string; description: string; settings: Partial<Resume['settings']> }[] = [
+  {
+    name: 'Classic',
+    description: 'A clean, ATS-friendly single-column layout.',
+    settings: { pageSize: 'A4', layout: 'single', accentColor: '#263238', fontFamily: 'Arial', alignment: 'left', lineHeight: 1.2 },
+  },
+  {
+    name: 'Modern',
+    description: 'A refined style with a subtle color accent.',
+    settings: { pageSize: 'A4', layout: 'single', accentColor: '#365a42', fontFamily: 'Inter', alignment: 'left', lineHeight: 1.25 },
+  },
+  {
+    name: 'Compact',
+    description: 'A two-column option to fit more detail on a page.',
+    settings: { pageSize: 'A4', layout: 'two', accentColor: '#2f4d75', fontFamily: 'Carlito', alignment: 'left', lineHeight: 1.15, marginTop: 8, marginBottom: 8, marginSide: 9 },
+  },
+]
+
 function Field({ label, value, onChange, multiline = false, placeholder = '' }: {
   label: string; value: string; onChange: (value: string) => void; multiline?: boolean; placeholder?: string
 }) {
@@ -345,6 +371,7 @@ function ResumePreview({ zoom, containerRef, resume: previewResume }: {
   const contacts = contactValues.filter((contact) => contact.value.trim())
   const style = {
     '--font-family': settings.fontFamily,
+    '--resume-accent': settings.accentColor,
     '--name-size': `${settings.nameFontSize}pt`,
     '--title-size': `${settings.titleFontSize}pt`,
     '--heading-size': `${settings.headingFontSize}pt`,
@@ -519,6 +546,22 @@ function DesignSidebar({ zoom, setZoom }: { zoom: number; setZoom: (zoom: number
             <Button variant={settings.alignment === 'left' ? 'secondary' : 'outline'} size="sm" className={settings.alignment === 'left' ? 'active' : ''} type="button" aria-pressed={settings.alignment === 'left'} onClick={() => update('alignment', 'left')}><AlignLeft size={15} /> Left</Button>
             <Button variant={settings.alignment === 'justify' ? 'secondary' : 'outline'} size="sm" className={settings.alignment === 'justify' ? 'active' : ''} type="button" aria-pressed={settings.alignment === 'justify'} onClick={() => update('alignment', 'justify')}><AlignJustify size={15} /> Justify</Button>
             <Button variant={settings.alignment === 'center' ? 'secondary' : 'outline'} size="sm" className={settings.alignment === 'center' ? 'active' : ''} type="button" aria-pressed={settings.alignment === 'center'} onClick={() => update('alignment', 'center')}><AlignCenter size={15} /> Center</Button>
+          </div>
+        </div>
+        <div className="setting-group">
+          <div className="setting-group-heading"><Sun size={15} /><strong>Resume color</strong></div>
+          <div className="resume-color-options" role="group" aria-label="Choose resume accent color">
+            {RESUME_COLORS.map((color) => (
+              <button
+                key={color.value}
+                type="button"
+                className="resume-color-swatch"
+                style={{ '--swatch-color': color.value } as React.CSSProperties}
+                aria-label={`${color.name} accent`}
+                aria-pressed={settings.accentColor === color.value}
+                onClick={() => update('accentColor', color.value)}
+              />
+            ))}
           </div>
         </div>
       </div> : <div className="settings-content">
@@ -780,7 +823,8 @@ function App() {
   ))
   const [activeSection, setActiveSection] = useState('profile')
   const [zoom, setZoom] = useState(82)
-  const [editorMode, setEditorMode] = useState<'content' | 'design'>('content')
+  const [editorMode, setEditorMode] = useState<'dashboard' | 'content' | 'templates' | 'design' | 'ats' | 'settings'>('content')
+  const [mobileView, setMobileView] = useState<'edit' | 'preview'>('edit')
   const [dragId, setDragId] = useState<string | null>(null)
   const [importError, setImportError] = useState('')
   const [resetOpen, setResetOpen] = useState(false)
@@ -798,9 +842,22 @@ function App() {
   }
 
   useEffect(() => {
-    const frame = requestAnimationFrame(fitPreview)
+    const frame = requestAnimationFrame(() => {
+      if (mobileView === 'preview' && window.matchMedia('(max-width: 720px)').matches) {
+        previewRef.current?.scrollTo({ top: 0, left: 0 })
+      }
+      fitPreview()
+    })
     return () => cancelAnimationFrame(frame)
-  }, [])
+  }, [mobileView])
+
+  useEffect(() => {
+    const preview = previewRef.current
+    if (!preview) return
+    const observer = new ResizeObserver(fitPreview)
+    observer.observe(preview)
+    return () => observer.disconnect()
+  }, [resume.settings.pageSize])
 
   useEffect(() => {
     localStorage.setItem('folio-theme', theme)
@@ -871,59 +928,138 @@ function App() {
   return (
     <main className="app-shell" data-theme={theme}>
       <header className="topbar no-print">
-        <div className="brand"><div className="brand-mark">f.</div><div><strong>folio</strong><span>RESUME STUDIO</span></div></div>
+        <div className="brand topbar-brand"><div className="brand-mark">f.</div><div><strong>folio</strong><span>RESUME STUDIO</span></div></div>
         <div className="document-name"><span className="status-dot" /> {resume.profile.name || 'Untitled resume'} <span className="document-type">· Resume</span></div>
         <div className="topbar-actions">
           <Button variant="ghost" className="topbar-button ats-open-button" type="button" onClick={() => setAtsOpen(true)}><Sparkles size={15} /> <span>Analyze CV</span></Button>
           <Button variant="ghost" className="topbar-button" type="button" onClick={() => setMarkdownWorkspaceOpen(true)} aria-label="Paste CV as Markdown" title="Paste CV as Markdown"><ClipboardPaste size={15} /> <span>Paste CV</span></Button>
-          <Button
-            variant="ghost"
-            className="topbar-button theme-toggle"
-            type="button"
-            aria-label={`Switch to ${theme === 'dark' ? 'light' : 'dark'} mode`}
-            aria-pressed={theme === 'dark'}
-            title={`Switch to ${theme === 'dark' ? 'light' : 'dark'} mode`}
-            onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
-          >{theme === 'dark' ? <Sun size={15} /> : <Moon size={15} />} <span>{theme === 'dark' ? 'Light mode' : 'Dark mode'}</span></Button>
           <Button variant="ghost" className="topbar-button" type="button" onClick={() => fileInput.current?.click()}><Upload size={15} /> <span>Import</span></Button>
           <input ref={fileInput} hidden type="file" accept="application/json,.json" onChange={(event) => void importFile(event.target.files?.[0])} />
-          <Button variant="ghost" className="topbar-button" type="button" onClick={() => downloadJson(resume)}><FileJson2 size={15} /> <span>Export JSON</span></Button>
-          <Button variant="ghost" className="topbar-button" type="button" onClick={() => downloadAtsText(resume)}><FileText size={15} /> <span>Export TXT</span></Button>
-          <span className="topbar-divider" />
           <Button className="export-button" type="button" onClick={() => printResume(resume.settings)}><ArrowDownToLine size={16} /> Export PDF</Button>
           <Button variant="ghost" size="icon" className="print-icon" type="button" title="Print resume" aria-label="Print resume" onClick={() => printResume(resume.settings)}><Printer size={16} /></Button>
         </div>
       </header>
       {importError && <div role="alert" className="import-error no-print">{importError}<Button variant="ghost" size="icon" type="button" onClick={() => setImportError('')} aria-label="Dismiss error"><X size={14} /></Button></div>}
-      <nav className="editor-mode-nav no-print" aria-label="Resume editor mode">
-        <div className="editor-mode-switch" role="group" aria-label="Choose what to edit">
-          <Button variant={editorMode === 'content' ? 'secondary' : 'ghost'} size="sm" type="button" aria-pressed={editorMode === 'content'} onClick={() => setEditorMode('content')}>
-            <FileText size={14} /> Content
-          </Button>
-          <Button variant={editorMode === 'design' ? 'secondary' : 'ghost'} size="sm" type="button" aria-pressed={editorMode === 'design'} onClick={() => setEditorMode('design')}>
-            <Settings2 size={14} /> Design
-          </Button>
+      <div className="mobile-view-nav no-print">
+        <div className="mobile-preview-toggle" role="group" aria-label="Choose editor or resume preview">
+          <Button variant={mobileView === 'edit' ? 'secondary' : 'ghost'} size="sm" type="button" aria-pressed={mobileView === 'edit'} onClick={() => setMobileView('edit')}>Edit</Button>
+          <Button variant={mobileView === 'preview' ? 'secondary' : 'ghost'} size="sm" type="button" aria-pressed={mobileView === 'preview'} onClick={() => setMobileView('preview')}>Preview</Button>
         </div>
-        <p>{editorMode === 'content'
-          ? 'Build your resume with focused content fields.'
-          : 'Adjust typography, spacing, and page layout.'}</p>
-      </nav>
-      <div className="workspace no-print" data-mode={editorMode}>
-        <ContentSidebar active={activeSection} setActive={setActiveSection} dragId={dragId} setDragId={setDragId} />
-        <section className="preview-workspace">
-          <div className="preview-toolbar">
-            <div><span className="preview-label">LIVE PREVIEW</span><span className="preview-page"><FileText size={13} /> {resume.settings.pageSize} · Resume</span></div>
-            <div className="toolbar-actions">
-              <div className="zoom-tools"><Button variant="outline" size="icon" title="Zoom out" type="button" onClick={() => setZoom(Math.max(50, zoom - 5))}><Minus size={14} /></Button><span>{zoom}%</span><Button variant="outline" size="icon" title="Zoom in" type="button" onClick={() => setZoom(Math.min(120, zoom + 5))}><Plus size={14} /></Button><span className="zoom-separator" /><Button variant="outline" size="icon" title="Fit page to preview width" type="button" onClick={fitPreview}><Maximize2 size={14} /></Button></div>
-            </div>
-          </div>
-          <ResumePreview zoom={zoom} containerRef={previewRef} />
-          <div className="preview-footnote"><Check size={12} /> Changes save automatically <span>·</span> Export a PDF to share or print</div>
-        </section>
-        <DesignSidebar zoom={zoom} setZoom={setZoom} />
       </div>
-      <div className="mobile-preview no-print"><ResumePreview zoom={100} /></div>
-      <footer className="app-footer no-print"><span><span className="privacy-dot" /> Private by design</span><div><Button variant="link" size="sm" type="button" onClick={() => downloadJson(resume)}>Backup data</Button><Button variant="link" size="sm" type="button" onClick={() => setResetOpen(true)}><RotateCcw size={13} /> Reset CV</Button></div></footer>
+      <div className="studio-body no-print">
+        <aside className="studio-nav" aria-label="Main navigation">
+          <div className="brand"><div className="brand-mark">f.</div><div><strong>folio</strong><span>RESUME STUDIO</span></div></div>
+          <div className="studio-nav-section">
+            <span className="studio-nav-label">WORKSPACE</span>
+            <button className={`studio-nav-item ${editorMode === 'dashboard' ? 'selected' : ''}`} type="button" onClick={() => { setEditorMode('dashboard'); setMobileView('edit') }}><LayoutGrid size={17} /><span>Dashboard</span></button>
+            <button className={`studio-nav-item ${editorMode === 'content' || editorMode === 'ats' ? 'selected' : ''}`} type="button" onClick={() => { setEditorMode('content'); setMobileView('edit') }}><FileText size={17} /><span>My Resume</span></button>
+            <button className={`studio-nav-item ${editorMode === 'templates' ? 'selected' : ''}`} type="button" onClick={() => { setEditorMode('templates'); setMobileView('edit') }}><LayoutGrid size={17} /><span>Templates</span></button>
+          </div>
+          <div className="studio-nav-section">
+            <span className="studio-nav-label">DOCUMENT</span>
+            <button className={`studio-nav-item ${editorMode === 'design' ? 'selected' : ''}`} type="button" onClick={() => { setEditorMode('design'); setMobileView('edit') }}><Sun size={17} /><span>Theme</span></button>
+            <button className="studio-nav-item" type="button" onClick={() => printResume(resume.settings)}><ArrowDownToLine size={17} /><span>Export</span></button>
+            <button className={`studio-nav-item ${editorMode === 'settings' ? 'selected' : ''}`} type="button" onClick={() => { setEditorMode('settings'); setMobileView('edit') }}><Settings2 size={17} /><span>Settings</span></button>
+          </div>
+          <div className="studio-nav-bottom">
+            <span className="privacy-dot" />
+            <span>Saved privately on this device</span>
+          </div>
+        </aside>
+        <div className="workspace" data-mode={editorMode} data-mobile-view={mobileView}>
+          <section className="preview-workspace">
+            <div className="preview-toolbar">
+              <div><span className="preview-label">LIVE PREVIEW</span><span className="preview-page"><FileText size={13} /> {resume.settings.pageSize} · Resume</span></div>
+              <div className="toolbar-actions">
+                <div className="zoom-tools"><Button variant="outline" size="icon" title="Zoom out" type="button" onClick={() => setZoom(Math.max(50, zoom - 5))}><Minus size={14} /></Button><span>{zoom}%</span><Button variant="outline" size="icon" title="Zoom in" type="button" onClick={() => setZoom(Math.min(120, zoom + 5))}><Plus size={14} /></Button><span className="zoom-separator" /><Button variant="outline" size="icon" title="Fit page to preview width" type="button" onClick={fitPreview}><Maximize2 size={14} /></Button></div>
+              </div>
+            </div>
+            <ResumePreview zoom={zoom} containerRef={previewRef} />
+            <div className="preview-footnote"><Check size={12} /> Changes save automatically <span>·</span> Export a PDF to share or print</div>
+          </section>
+          <aside className="editor-panel">
+            <div className="editor-panel-tabs" role="group" aria-label="Resume editing tools">
+              <Button variant={editorMode === 'content' ? 'secondary' : 'ghost'} size="sm" type="button" aria-pressed={editorMode === 'content'} onClick={() => setEditorMode('content')}><FileText size={14} /><span>Edit section</span></Button>
+              <Button variant={editorMode === 'design' ? 'secondary' : 'ghost'} size="sm" type="button" aria-pressed={editorMode === 'design'} onClick={() => setEditorMode('design')}><Settings2 size={14} /><span>Layout controls</span></Button>
+              <Button variant={editorMode === 'ats' ? 'secondary' : 'ghost'} size="sm" type="button" aria-pressed={editorMode === 'ats'} onClick={() => setEditorMode('ats')}><Sparkles size={14} /><span>ATS score</span></Button>
+            </div>
+            {editorMode === 'dashboard' && <section className="dashboard-panel">
+              <div className="sidebar-heading"><div><span className="eyebrow">YOUR WORKSPACE</span><h2>Dashboard</h2></div><LayoutGrid size={18} className="muted-icon" /></div>
+              <div className="dashboard-panel-content">
+                <p className="dashboard-welcome">Welcome back{resume.profile.name ? `, ${resume.profile.name}` : ''}.</p>
+                <p className="helper-copy">Keep your resume focused, readable, and ready to tailor for your next opportunity.</p>
+                <div className="dashboard-metrics">
+                  <div><strong>{resume.sections.filter((section) => section.enabled).length}</strong><span>Active sections</span></div>
+                  <div><strong>{resume.sections.reduce((total, section) => total + section.items.length, 0)}</strong><span>Resume entries</span></div>
+                  <div><strong>{resume.settings.pageSize}</strong><span>Page size</span></div>
+                </div>
+                <div className="dashboard-next-step">
+                  <span className="eyebrow">NEXT STEP</span>
+                  <h3>Review your resume content</h3>
+                  <p>Check that your experience and achievements are specific to the role you want.</p>
+                  <Button className="export-button" type="button" onClick={() => { setEditorMode('content'); setMobileView('edit') }}><FileText size={15} /> Continue editing</Button>
+                </div>
+                <Button variant="outline" className="settings-action" type="button" onClick={() => setAtsOpen(true)}><Sparkles size={15} /> Run an ATS match analysis</Button>
+              </div>
+            </section>}
+            {editorMode === 'content' && <ContentSidebar active={activeSection} setActive={setActiveSection} dragId={dragId} setDragId={setDragId} />}
+            {editorMode === 'design' && <DesignSidebar zoom={zoom} setZoom={setZoom} />}
+            {editorMode === 'templates' && <section className="template-panel">
+              <div className="sidebar-heading"><div><span className="eyebrow">START WITH A STYLE</span><h2>Templates</h2></div><LayoutGrid size={18} className="muted-icon" /></div>
+              <div className="template-panel-content">
+                <p className="helper-copy">Choose a starting layout. Your resume content stays unchanged, and you can fine-tune the design afterward.</p>
+                {RESUME_TEMPLATES.map((template) => (
+                  <article className="template-card" key={template.name}>
+                    <div className={`template-thumbnail template-thumbnail-${template.name.toLowerCase()}`} aria-hidden="true"><span /><i /><i /><i /><b /></div>
+                    <div className="template-card-copy"><strong>{template.name}</strong><p>{template.description}</p></div>
+                    <Button variant="outline" size="sm" type="button" onClick={() => replaceResume({ ...resume, settings: { ...resume.settings, ...template.settings } })}>Use style</Button>
+                  </article>
+                ))}
+                <p className="template-ats-note"><Check size={14} /> Classic and Modern keep a single-column reading order for ATS compatibility.</p>
+              </div>
+            </section>}
+            {editorMode === 'ats' && <section className="ats-tools-panel">
+              <div className="sidebar-heading"><div><span className="eyebrow">ATS & WRITING</span><h2>Resume check</h2></div><Sparkles size={18} className="muted-icon" /></div>
+              <div className="ats-tools-content">
+                <div className="ats-tools-card">
+                  <span className="ats-tools-icon"><Check size={17} /></span>
+                  <h3>Match your resume to a role</h3>
+                  <p>Get a transparent keyword and formatting estimate, plus focused suggestions based on the job description.</p>
+                  <Button className="export-button ats-tools-action" type="button" onClick={() => setAtsOpen(true)}><Sparkles size={15} /> Analyze against a job</Button>
+                  <small>Analysis runs in your browser. It is an estimate, not an employer’s actual ATS score.</small>
+                </div>
+                <div className="ats-tools-details">
+                  <strong>What the check covers</strong>
+                  <ul><li>Role-specific keyword coverage</li><li>Technical skills and experience alignment</li><li>Formatting checks and writing suggestions</li></ul>
+                </div>
+              </div>
+            </section>}
+            {editorMode === 'settings' && <section className="settings-panel">
+              <div className="sidebar-heading"><div><span className="eyebrow">PREFERENCES</span><h2>Settings</h2></div><Settings2 size={18} className="muted-icon" /></div>
+              <div className="settings-panel-content">
+                <div className="setting-group">
+                  <div className="setting-group-heading"><Sun size={15} /><strong>Appearance</strong></div>
+                  <Button variant="outline" className="settings-action" type="button" onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}>
+                    {theme === 'dark' ? <Sun size={15} /> : <Moon size={15} />} Switch to {theme === 'dark' ? 'light' : 'dark'} mode
+                  </Button>
+                </div>
+                <div className="setting-group">
+                  <div className="setting-group-heading"><FileJson2 size={15} /><strong>Backup & data</strong></div>
+                  <Button variant="outline" className="settings-action" type="button" onClick={() => downloadJson(resume)}>Download JSON backup</Button>
+                  <Button variant="outline" className="settings-action" type="button" onClick={() => downloadAtsText(resume)}>Export accessible text</Button>
+                  <Button variant="outline" className="settings-action" type="button" onClick={() => fileInput.current?.click()}><Upload size={15} /> Import resume JSON</Button>
+                </div>
+                <div className="setting-group">
+                  <div className="setting-group-heading"><RotateCcw size={15} /><strong>Start over</strong></div>
+                  <p className="helper-copy">Restore the sample resume. Export a backup first if you want to keep your current version.</p>
+                  <Button variant="outline" className="settings-action settings-reset" type="button" onClick={() => setResetOpen(true)}><RotateCcw size={15} /> Reset resume</Button>
+                </div>
+              </div>
+            </section>}
+          </aside>
+        </div>
+      </div>
+      <footer className="app-footer no-print"><span><span className="privacy-dot" /> Private by design</span><div><span>Folio Resume Studio</span></div></footer>
       {resetOpen && <div className="modal-backdrop no-print" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) setResetOpen(false) }}>
         <div className="confirm-modal" role="dialog" aria-modal="true" aria-labelledby="reset-title"><div className="modal-icon"><RotateCcw size={19} /></div><h2 id="reset-title">Start fresh?</h2><p>This replaces the current CV with the original sample data. You can export a JSON backup before continuing.</p><div className="modal-actions"><Button variant="outline" className="cancel-button" type="button" onClick={() => setResetOpen(false)}>Keep editing</Button><Button variant="destructive" className="confirm-button" type="button" onClick={() => { resetResume(); setActiveSection('profile'); setResetOpen(false) }}>Reset CV</Button></div></div>
       </div>}
