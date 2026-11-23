@@ -599,7 +599,6 @@ function DesignSidebar({ zoom, setZoom }: { zoom: number; setZoom: (zoom: number
           <NumberSetting label="Zoom" value={zoom} min={50} max={120} onChange={setZoom} unit="%" />
         </div>
       </div>}
-      <div className="privacy-note"><span className="privacy-dot" /><div><strong>Your CV stays yours</strong><p>Saved only in this browser on this device.</p></div></div>
     </aside>
   )
 }
@@ -961,10 +960,6 @@ function App() {
             <button className="studio-nav-item" type="button" onClick={() => printResume(resume.settings)}><ArrowDownToLine size={17} /><span>Export</span></button>
             <button className={`studio-nav-item ${editorMode === 'settings' ? 'selected' : ''}`} type="button" onClick={() => { setEditorMode('settings'); setMobileView('edit') }}><Settings2 size={17} /><span>Settings</span></button>
           </div>
-          <div className="studio-nav-bottom">
-            <span className="privacy-dot" />
-            <span>Saved privately on this device</span>
-          </div>
         </aside>
         <div className="workspace" data-mode={editorMode} data-mobile-view={mobileView}>
           <section className="preview-workspace">
@@ -1059,7 +1054,10 @@ function App() {
           </aside>
         </div>
       </div>
-      <footer className="app-footer no-print"><span><span className="privacy-dot" /> Private by design</span><div><span>Folio Resume Studio</span></div></footer>
+      <footer className="app-footer no-print">
+        <span className="footer-privacy"><span className="privacy-dot" /><strong>Your CV stays yours</strong><span>Saved only in this browser on this device.</span></span>
+        <div><span>Folio Resume Studio</span></div>
+      </footer>
       {resetOpen && <div className="modal-backdrop no-print" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) setResetOpen(false) }}>
         <div className="confirm-modal" role="dialog" aria-modal="true" aria-labelledby="reset-title"><div className="modal-icon"><RotateCcw size={19} /></div><h2 id="reset-title">Start fresh?</h2><p>This replaces the current CV with the original sample data. You can export a JSON backup before continuing.</p><div className="modal-actions"><Button variant="outline" className="cancel-button" type="button" onClick={() => setResetOpen(false)}>Keep editing</Button><Button variant="destructive" className="confirm-button" type="button" onClick={() => { resetResume(); setActiveSection('profile'); setResetOpen(false) }}>Reset CV</Button></div></div>
       </div>}

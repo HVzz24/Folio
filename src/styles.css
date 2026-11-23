@@ -270,13 +270,12 @@ button:disabled { cursor: default; opacity: .35; }
 .alignment-options button { gap: 4px; padding-inline: 3px; }
 .toggle-setting { display: flex; align-items: center; justify-content: space-between; margin-top: 13px; color: #737373; font-size: 9px; }
 .toggle-setting input { accent-color: #171717; }
-.privacy-note { display: flex; gap: 9px; align-items: flex-start; margin: 9px 17px 20px; padding: 12px 10px; border-radius: 7px; background: #f5f5f5; color: #525252; }
-.privacy-dot { flex: 0 0 auto; margin-top: 4px; }
-.privacy-note strong { font-size: 9px; font-weight: 600; }
-.privacy-note p { margin: 3px 0 0; color: #737373; font-size: 8px; line-height: 1.4; }
+.privacy-dot { flex: 0 0 auto; }
 .muted-icon { color: #9ba6a0; }
 .app-footer { min-height: 38px; flex: 0 0 38px; display: flex; align-items: center; justify-content: space-between; padding: 0 20px; border-top: 1px solid #e8ebed; background: #fff; color: #89938e; font-size: 9px; }
 .app-footer > span { display: flex; align-items: center; gap: 6px; }
+.app-footer .footer-privacy { font-size: 10px; }
+.app-footer .footer-privacy strong { color: #626d66; font-weight: 600; }
 .app-footer > div { display: flex; gap: 13px; }
 .app-footer button { display: inline-flex; align-items: center; gap: 4px; border: 0; background: transparent; color: #525252; padding: 4px 0; font-size: 9px; }
 .app-footer button:hover { color: #171717; }
@@ -498,8 +497,6 @@ button:disabled { cursor: default; opacity: .35; }
 .app-shell[data-theme="dark"] .text-action:hover { color: #fff; }
 .app-shell[data-theme="dark"] .remove-section { color: #d68f83; }
 .app-shell[data-theme="dark"] .add-section-form button { background: #e5e5e5; color: #171717; }
-.app-shell[data-theme="dark"] .privacy-note { background: #1f1f1f; color: #d4d4d4; }
-.app-shell[data-theme="dark"] .privacy-note p { color: #a3a3a3; }
 body:has(.app-shell[data-theme="dark"]) .ui-select-popup {
   --popover: #171719;
   --foreground: #f5f5f5;
@@ -519,6 +516,7 @@ body:has(.app-shell[data-theme="dark"]) .ui-select-popup {
 .app-shell[data-theme="dark"] .preview-workspace .resume-paper { background-color: #fff; }
 .app-shell[data-theme="dark"] .preview-footnote { color: #94a398; }
 .app-shell[data-theme="dark"] .app-footer { color: var(--dark-muted); }
+.app-shell[data-theme="dark"] .app-footer .footer-privacy strong { color: var(--dark-text); }
 .app-shell[data-theme="dark"] .app-footer button { color: #b7c3ba; }
 .app-shell[data-theme="dark"] .app-footer button:hover { color: #e6d2a6; }
 .app-shell[data-theme="dark"] .privacy-dot,
@@ -824,8 +822,6 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-
 .studio-nav-item.selected svg { color: #557a5f; }
 .studio-nav-item:disabled { cursor: not-allowed; opacity: .48; }
 .studio-nav-item small { color: #9aa39d; font-size: 8px; font-weight: 700; letter-spacing: .5px; }
-.studio-nav-bottom { display: flex; align-items: flex-start; gap: 8px; margin-top: auto; padding: 12px 9px 2px; border-top: 1px solid #edf0ee; color: #8a958e; font-size: 10px; line-height: 1.4; }
-.studio-nav-bottom .privacy-dot { flex: 0 0 auto; margin-top: 3px; }
 .workspace {
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(340px, 370px);
@@ -873,6 +869,9 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-
 .editor-panel .settings-content,
 .editor-panel .ats-tools-content,
 .editor-panel .settings-panel-content { flex: 1 1 auto; min-height: 0; }
+.workspace .editor-panel > .design-sidebar { overflow: hidden; }
+.editor-panel .settings-content { overflow-y: auto; overscroll-behavior: contain; }
+.editor-panel .settings-tabs { flex: 0 0 auto; }
 .ats-tools-panel, .settings-panel { flex: 1 1 auto; min-height: 0; overflow-y: auto; background: #fff; }
 .ats-tools-content, .settings-panel-content { padding: 0 17px 20px; }
 .ats-tools-card { padding: 17px; border: 1px solid #e4eae5; border-radius: 10px; background: #f8faf8; }
@@ -886,7 +885,6 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-
 .ats-tools-details ul { display: grid; gap: 10px; margin: 12px 0 0; padding-left: 17px; line-height: 1.45; }
 .settings-action { display: flex; justify-content: flex-start; width: 100%; margin-top: 8px; text-align: left; }
 .settings-reset { color: #a44f47; }
-.editor-panel .privacy-note { margin: 8px 17px 18px; }
 .resume-section h2 { color: var(--resume-accent); border-bottom-color: var(--resume-accent); }
 .resume-header h1 { color: var(--resume-accent); }
 .resume-color-options { display: flex; flex-wrap: wrap; gap: 10px; }
@@ -935,8 +933,7 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-
 .app-shell[data-theme="dark"] .settings-panel,
 .app-shell[data-theme="dark"] .dashboard-panel,
 .app-shell[data-theme="dark"] .template-panel { border-color: var(--dark-border); background: var(--dark-panel); }
-.app-shell[data-theme="dark"] .studio-nav-label,
-.app-shell[data-theme="dark"] .studio-nav-bottom { color: var(--dark-subtle); }
+.app-shell[data-theme="dark"] .studio-nav-label { color: var(--dark-subtle); }
 .app-shell[data-theme="dark"] .studio-nav .brand { border-color: var(--dark-border); }
 .app-shell[data-theme="dark"] .studio-nav-item { color: var(--dark-muted); }
 .app-shell[data-theme="dark"] .studio-nav-item svg { color: var(--dark-subtle); }
@@ -993,7 +990,7 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-
     border-right: 0;
     border-bottom: 1px solid #e8ebed;
   }
-  .studio-nav .brand, .studio-nav-label, .studio-nav-bottom { display: none; }
+  .studio-nav .brand, .studio-nav-label { display: none; }
   .studio-nav-section { display: contents; }
   .studio-nav-item { width: 100%; min-width: 0; min-height: 32px; gap: 5px; padding-inline: 6px; font-size: 10px; white-space: nowrap; }
   .studio-nav-item svg { flex: 0 0 14px; width: 14px; height: 14px; }
@@ -1013,6 +1010,7 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-
   .app-shell[data-theme="dark"] .mobile-view-nav { border-color: var(--dark-border); background: var(--dark-panel); }
   .app-shell[data-theme="dark"] .mobile-preview-toggle { border-color: var(--dark-border); background: #101713; }
   .app-shell[data-theme="dark"] .mobile-preview-toggle .ui-button-secondary { background: #262626; }
+  .app-footer > div { display: none; }
 }
 
 @page { size: A4; margin: 0; }
