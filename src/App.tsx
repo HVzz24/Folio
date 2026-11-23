@@ -934,6 +934,17 @@ function App() {
           <Button variant="ghost" className="topbar-button" type="button" onClick={() => setMarkdownWorkspaceOpen(true)} aria-label="Paste CV as Markdown" title="Paste CV as Markdown"><ClipboardPaste size={15} /> <span>Paste CV</span></Button>
           <Button variant="ghost" className="topbar-button" type="button" onClick={() => fileInput.current?.click()}><Upload size={15} /> <span>Import</span></Button>
           <input ref={fileInput} hidden type="file" accept="application/json,.json" onChange={(event) => void importFile(event.target.files?.[0])} />
+          <Button
+            variant="ghost"
+            className="topbar-button theme-toggle"
+            type="button"
+            aria-label={`Switch to ${theme === 'dark' ? 'light' : 'dark'} mode`}
+            title={`Switch to ${theme === 'dark' ? 'light' : 'dark'} mode`}
+            onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
+          >
+            {theme === 'dark' ? <Sun size={16} /> : <Moon size={16} />}
+            <span>{theme === 'dark' ? 'Light mode' : 'Dark mode'}</span>
+          </Button>
           <Button className="export-button" type="button" onClick={() => printResume(resume.settings)}><ArrowDownToLine size={16} /> Export PDF</Button>
           <Button variant="ghost" size="icon" className="print-icon" type="button" title="Print resume" aria-label="Print resume" onClick={() => printResume(resume.settings)}><Printer size={16} /></Button>
         </div>
@@ -1032,12 +1043,6 @@ function App() {
             {editorMode === 'settings' && <section className="settings-panel">
               <div className="sidebar-heading"><div><span className="eyebrow">PREFERENCES</span><h2>Settings</h2></div><Settings2 size={18} className="muted-icon" /></div>
               <div className="settings-panel-content">
-                <div className="setting-group">
-                  <div className="setting-group-heading"><Sun size={15} /><strong>Appearance</strong></div>
-                  <Button variant="outline" className="settings-action" type="button" onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}>
-                    {theme === 'dark' ? <Sun size={15} /> : <Moon size={15} />} Switch to {theme === 'dark' ? 'light' : 'dark'} mode
-                  </Button>
-                </div>
                 <div className="setting-group">
                   <div className="setting-group-heading"><FileJson2 size={15} /><strong>Backup & data</strong></div>
                   <Button variant="outline" className="settings-action" type="button" onClick={() => downloadJson(resume)}>Download JSON backup</Button>
