@@ -238,6 +238,22 @@ function ContentSidebar({ active, setActive, dragId, setDragId }: {
   const store = useResumeStore()
   const [newHeading, setNewHeading] = useState('')
   const profile = resume.profile
+  const accordionListRef = useRef<HTMLDivElement>(null)
+  const sectionRefs = useRef(new Map<string, HTMLElement>())
+
+  useEffect(() => {
+    if (!active || active === 'profile') return
+    const list = accordionListRef.current
+    const section = sectionRefs.current.get(active)
+    if (!list || !section) return
+    const listBounds = list.getBoundingClientRect()
+    const sectionTop = section.getBoundingClientRect().top
+    if (sectionTop < listBounds.top) {
+      list.scrollBy({ top: sectionTop - listBounds.top, behavior: 'smooth' })
+    } else if (sectionTop > listBounds.bottom) {
+      list.scrollBy({ top: sectionTop - listBounds.top, behavior: 'smooth' })
+    }
+  }, [active])
 
   function moveDropped(targetId: string) {
     if (dragId && dragId !== targetId) store.moveSection(dragId, targetId)
@@ -248,6 +264,9 @@ function ContentSidebar({ active, setActive, dragId, setDragId }: {
     const enabled = !section.enabled
     store.updateSection(section.id, { enabled })
     if (section.type === 'summary') store.updateProfile('summaryEnabled', enabled)
+    if (!enabled && active === section.id) {
+      setActive(resume.sections.find((candidate) => candidate.id !== section.id && candidate.enabled)?.id ?? 'profile')
+    }
   }
 
   return (
@@ -256,7 +275,7 @@ function ContentSidebar({ active, setActive, dragId, setDragId }: {
         <div><span className="eyebrow">YOUR DOCUMENT</span><h2>Content</h2></div>
         <span className="saved-pill"><Check size={12} /> Saved locally</span>
       </div>
-      <div className="accordion-list">
+      <div className="accordion-list" ref={accordionListRef}>
         <section className={`accordion ${active === 'profile' ? 'open' : ''}`}>
           <Button variant="ghost" className="accordion-trigger" type="button" onClick={() => setActive(active === 'profile' ? '' : 'profile')}>
             <span className="accordion-icon"><Sparkles size={16} /></span><span className="accordion-name">Personal profile<small>Name, contact & summary</small></span>
@@ -292,6 +311,10 @@ function ContentSidebar({ active, setActive, dragId, setDragId }: {
           <section
             className={`accordion section-accordion ${active === section.id ? 'open' : ''}`}
             key={section.id}
+            ref={(element) => {
+              if (element) sectionRefs.current.set(section.id, element)
+              else sectionRefs.current.delete(section.id)
+            }}
             onDragOver={(event) => event.preventDefault()}
             onDrop={() => moveDropped(section.id)}
           >
@@ -306,7 +329,7 @@ function ContentSidebar({ active, setActive, dragId, setDragId }: {
                 }}
                 onDragEnd={() => setDragId(null)}
               ><GripVertical size={15} /></span>
-              <Button variant="ghost" className="accordion-trigger section-trigger" type="button" onClick={() => setActive(active === section.id ? '' : section.id)}>
+              <Button variant="ghost" className="accordion-trigger section-trigger" type="button" onClick={() => setActive(section.id)}>
                 <span className="accordion-name">{section.heading || 'Untitled section'}<small>{section.type === 'summary'
                   ? 'Summary statement'
                   : [
@@ -333,7 +356,7 @@ function ContentSidebar({ active, setActive, dragId, setDragId }: {
                   <div className="subsections"><ListSectionEditor section={section} /></div>
                 </>}
               {section.type === 'custom' && section.items.length === 0 && section.subsections.length === 0 && <p className="helper-copy">Start with an entry or create titled subsections and list items.</p>}
-              {section.type === 'custom' && <Button variant="link" size="sm" className="remove-section" type="button" onClick={() => store.deleteSection(section.id)}><Trash2 size={14} /> Delete section</Button>}
+              {section.type === 'custom' && <Button variant="link" size="sm" className="remove-section" type="button" onClick={() => { store.deleteSection(section.id); setActive('profile') }}><Trash2 size={14} /> Delete section</Button>}
             </div>}
             {index !== resume.sections.length - 1 && <div className="section-separator" />}
           </section>
@@ -353,14 +376,31 @@ function ContentSidebar({ active, setActive, dragId, setDragId }: {
   )
 }
 
-function ResumePreview({ zoom, containerRef, resume: previewResume }: {
+function ResumePreview({ zoom, containerRef, resume: previewResume, activeSection, onSelectSection, interactive = false }: {
   zoom: number
   containerRef?: React.RefObject<HTMLDivElement | null>
   resume?: Resume
+  activeSection?: string
+  onSelectSection?: (sectionId: string) => void
+  interactive?: boolean
 }) {
   const storedResume = useResumeStore((state) => state.resume)
   const resume = previewResume ?? storedResume
   const { profile, settings } = resume
+  const sectionElements = useRef(new Map<string, HTMLElement>())
+  useEffect(() => {
+    if (!interactive || !activeSection) return
+    const container = containerRef?.current
+    const section = sectionElements.current.get(activeSection)
+    if (!container || !section || container.clientHeight === 0) return
+    const containerBounds = container.getBoundingClientRect()
+    const sectionBounds = section.getBoundingClientRect()
+    if (sectionBounds.top < containerBounds.top) {
+      container.scrollBy({ top: sectionBounds.top - containerBounds.top, behavior: 'smooth' })
+    } else if (sectionBounds.bottom > containerBounds.bottom) {
+      container.scrollBy({ top: sectionBounds.bottom - containerBounds.bottom, behavior: 'smooth' })
+    }
+  }, [activeSection, containerRef, interactive])
   const contactValues: { kind: 'email' | 'phone' | 'location' | 'linkedin' | 'portfolio'; value: string }[] = [
     { kind: 'email', value: profile.email },
     { kind: 'phone', value: profile.phone },
@@ -414,64 +454,80 @@ function ResumePreview({ zoom, containerRef, resume: previewResume }: {
             </div>
           </header>
           <div className={`resume-body ${settings.layout === 'two' ? 'two-column' : ''}`}>
-          {resume.sections.filter((section) => section.enabled).map((section) => section.type === 'summary' ? (
-            <section className="resume-section" key={section.id}>
+          {resume.sections.filter((section) => section.enabled).map((section) => (
+            <section
+              className={`resume-section ${interactive ? 'resume-section-selectable' : ''} ${interactive && activeSection === section.id ? 'resume-section-selected' : ''}`}
+              key={section.id}
+              ref={interactive ? (element) => {
+                if (element) sectionElements.current.set(section.id, element)
+                else sectionElements.current.delete(section.id)
+              } : undefined}
+              role={interactive ? 'button' : undefined}
+              tabIndex={interactive ? 0 : undefined}
+              aria-pressed={interactive ? activeSection === section.id : undefined}
+              aria-label={interactive ? `Select ${section.heading || 'untitled'} resume section` : undefined}
+              onClick={interactive ? () => onSelectSection?.(section.id) : undefined}
+              onKeyDown={interactive ? (event) => {
+                if (event.key === 'Enter' || event.key === ' ') {
+                  event.preventDefault()
+                  onSelectSection?.(section.id)
+                }
+              } : undefined}
+            >
               {section.heading && <h2>{section.heading}</h2>}
-              {profile.summary.trim() && <p>{profile.summary}</p>}
-            </section>
-          ) : (
-            <section className="resume-section" key={section.id}>
-              {section.heading && <h2>{section.heading}</h2>}
-              {section.subsections.map((subsection) => (
-                <div className="resume-subsection" key={subsection.id}>
-                  {subsection.heading && <h3>{subsection.heading}</h3>}
-                  {subsection.items.length > 0 && <ul>{subsection.items.filter(Boolean).map((item, index) => (
-                    <li key={`${subsection.id}-${index}`}>
-                      <span className="bullet-prefix" aria-hidden="true">- </span>
-                      {item}
-                    </li>
-                  ))}</ul>}
-                </div>
-              ))}
-              {section.items.map((item) => {
-                const title = section.type === 'education'
-                  ? item.fields.institution
-                  : section.type === 'experience'
-                    ? item.fields.company
-                    : item.fields.name || item.fields.position || item.fields.degree || item.fields.company
-                const subheading = section.type === 'education'
-                  ? [item.fields.degree, item.fields.grade ? `GPA: ${item.fields.grade.replace(/^GPA\s*/i, '')}` : ''].filter(Boolean).join(' | ')
-                  : section.type === 'experience'
-                    ? item.fields.position
-                    : item.fields.category
-                const date = [item.fields.start, item.fields.end].filter(Boolean).map(formatResumeDate).join(' – ')
-                const details = Object.entries(item.fields).filter(([key, value]) =>
-                  value && !['position', 'degree', 'name', 'company', 'institution', 'category', 'start', 'end', 'location', 'grade', 'technologies', 'technologiesLabel'].includes(key),
-                )
-                return (
-                  <div className={`resume-entry ${section.type === 'education' ? 'education-entry' : ''} ${section.type === 'experience' ? 'experience-entry' : ''}`} key={item.id}>
-                    <div className="resume-entry-head">
-                      <div className="resume-entry-title"><strong>{title}</strong></div>
-                      {date && <span className="resume-date"><span className="resume-print-separator"> | </span>{date}</span>}
-                    </div>
-                    {(subheading || item.fields.location) && (
-                      <div className="resume-entry-meta">
-                        <span>{subheading}</span>
-                        {subheading && item.fields.location && <span className="resume-print-separator"> | </span>}
-                        {item.fields.location && <span>{item.fields.location}</span>}
-                      </div>
-                    )}
-                    {details.filter(([key]) => key !== 'description').length > 0 && (
-                      <p className="resume-detail">{details.filter(([key]) => key !== 'description').map(([, value]) => value).join(' · ')}</p>
-                    )}
-                    {item.fields.description && <p className="resume-detail">{item.fields.description}</p>}
-                    {item.details.filter((detail) => detail.content).map((detail) => (
-                      <p className="resume-detail" key={detail.id}>{detail.label.trim() && <><strong>{detail.label.trim()}:</strong> </>}{detail.content}</p>
-                    ))}
-                    {item.bullets.filter(Boolean).length > 0 && <ul>{item.bullets.filter(Boolean).map((bullet, index) => <li key={`${item.id}-${index}`}><span className="bullet-prefix" aria-hidden="true">- </span>{bullet}</li>)}</ul>}
+              {section.type === 'summary' && profile.summary.trim() && <p>{profile.summary}</p>}
+              {section.type !== 'summary' && <>
+                {section.subsections.map((subsection) => (
+                  <div className="resume-subsection" key={subsection.id}>
+                    {subsection.heading && <h3>{subsection.heading}</h3>}
+                    {subsection.items.length > 0 && <ul>{subsection.items.filter(Boolean).map((item, index) => (
+                      <li key={`${subsection.id}-${index}`}>
+                        <span className="bullet-prefix" aria-hidden="true">- </span>
+                        {item}
+                      </li>
+                    ))}</ul>}
                   </div>
-                )
-              })}
+                ))}
+                {section.items.map((item) => {
+                  const title = section.type === 'education'
+                    ? item.fields.institution
+                    : section.type === 'experience'
+                      ? item.fields.company
+                      : item.fields.name || item.fields.position || item.fields.degree || item.fields.company
+                  const subheading = section.type === 'education'
+                    ? [item.fields.degree, item.fields.grade ? `GPA: ${item.fields.grade.replace(/^GPA\s*/i, '')}` : ''].filter(Boolean).join(' | ')
+                    : section.type === 'experience'
+                      ? item.fields.position
+                      : item.fields.category
+                  const date = [item.fields.start, item.fields.end].filter(Boolean).map(formatResumeDate).join(' – ')
+                  const details = Object.entries(item.fields).filter(([key, value]) =>
+                    value && !['position', 'degree', 'name', 'company', 'institution', 'category', 'start', 'end', 'location', 'grade', 'technologies', 'technologiesLabel'].includes(key),
+                  )
+                  return (
+                    <div className={`resume-entry ${section.type === 'education' ? 'education-entry' : ''} ${section.type === 'experience' ? 'experience-entry' : ''}`} key={item.id}>
+                      <div className="resume-entry-head">
+                        <div className="resume-entry-title"><strong>{title}</strong></div>
+                        {date && <span className="resume-date"><span className="resume-print-separator"> | </span>{date}</span>}
+                      </div>
+                      {(subheading || item.fields.location) && (
+                        <div className="resume-entry-meta">
+                          <span>{subheading}</span>
+                          {subheading && item.fields.location && <span className="resume-print-separator"> | </span>}
+                          {item.fields.location && <span>{item.fields.location}</span>}
+                        </div>
+                      )}
+                      {details.filter(([key]) => key !== 'description').length > 0 && (
+                        <p className="resume-detail">{details.filter(([key]) => key !== 'description').map(([, value]) => value).join(' · ')}</p>
+                      )}
+                      {item.fields.description && <p className="resume-detail">{item.fields.description}</p>}
+                      {item.details.filter((detail) => detail.content).map((detail) => (
+                        <p className="resume-detail" key={detail.id}>{detail.label.trim() && <><strong>{detail.label.trim()}:</strong> </>}{detail.content}</p>
+                      ))}
+                      {item.bullets.filter(Boolean).length > 0 && <ul>{item.bullets.filter(Boolean).map((bullet, index) => <li key={`${item.id}-${index}`}><span className="bullet-prefix" aria-hidden="true">- </span>{bullet}</li>)}</ul>}
+                    </div>
+                  )
+                })}
+              </>}
             </section>
           ))}
           </div>
@@ -904,10 +960,21 @@ function App() {
     setMarkdownWorkspaceOpen(false)
   }
 
+  function resetToSampleResume() {
+    resetResume()
+    setActiveSection('profile')
+  }
+
   function updateMarkdownDraft(source: string) {
     setMarkdownDraft(source)
     if (source) sessionStorage.setItem('folio-markdown-draft', source)
     else sessionStorage.removeItem('folio-markdown-draft')
+  }
+
+  function selectPreviewSection(sectionId: string) {
+    setActiveSection(sectionId)
+    setEditorMode('content')
+    setMobileView('edit')
   }
 
   if (markdownWorkspaceOpen) {
@@ -980,7 +1047,13 @@ function App() {
                 <div className="zoom-tools"><Button variant="outline" size="icon" title="Zoom out" type="button" onClick={() => setZoom(Math.max(50, zoom - 5))}><Minus size={14} /></Button><span>{zoom}%</span><Button variant="outline" size="icon" title="Zoom in" type="button" onClick={() => setZoom(Math.min(120, zoom + 5))}><Plus size={14} /></Button><span className="zoom-separator" /><Button variant="outline" size="icon" title="Fit page to preview width" type="button" onClick={fitPreview}><Maximize2 size={14} /></Button></div>
               </div>
             </div>
-            <ResumePreview zoom={zoom} containerRef={previewRef} />
+            <ResumePreview
+              zoom={zoom}
+              containerRef={previewRef}
+              activeSection={activeSection}
+              onSelectSection={selectPreviewSection}
+              interactive
+            />
             <div className="preview-footnote"><Check size={12} /> Changes save automatically <span>·</span> Export a PDF to share or print</div>
           </section>
           <aside className="editor-panel">
@@ -1064,7 +1137,7 @@ function App() {
         <div><span>Folio Resume Studio</span></div>
       </footer>
       {resetOpen && <div className="modal-backdrop no-print" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) setResetOpen(false) }}>
-        <div className="confirm-modal" role="dialog" aria-modal="true" aria-labelledby="reset-title"><div className="modal-icon"><RotateCcw size={19} /></div><h2 id="reset-title">Start fresh?</h2><p>This replaces the current CV with the original sample data. You can export a JSON backup before continuing.</p><div className="modal-actions"><Button variant="outline" className="cancel-button" type="button" onClick={() => setResetOpen(false)}>Keep editing</Button><Button variant="destructive" className="confirm-button" type="button" onClick={() => { resetResume(); setActiveSection('profile'); setResetOpen(false) }}>Reset CV</Button></div></div>
+        <div className="confirm-modal" role="dialog" aria-modal="true" aria-labelledby="reset-title"><div className="modal-icon"><RotateCcw size={19} /></div><h2 id="reset-title">Start fresh?</h2><p>This replaces the current CV with the original sample data. You can export a JSON backup before continuing.</p><div className="modal-actions"><Button variant="outline" className="cancel-button" type="button" onClick={() => setResetOpen(false)}>Keep editing</Button><Button variant="destructive" className="confirm-button" type="button" onClick={() => { resetToSampleResume(); setResetOpen(false) }}>Reset CV</Button></div></div>
       </div>}
       {atsOpen && <AtsAnalysisModal resume={resume} onClose={() => setAtsOpen(false)} />}
       <div className="print-root"><ResumePreview zoom={100} /></div>
