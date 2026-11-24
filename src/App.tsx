@@ -92,12 +92,31 @@ function getContactHref(kind: 'email' | 'phone' | 'location' | 'linkedin' | 'por
   return undefined
 }
 
-function EntryEditor({ section, item, index }: { section: ResumeSection; item: ResumeItem; index: number }) {
+function EntryEditor({ section, item, index, expanded, onToggle }: {
+  section: ResumeSection
+  item: ResumeItem
+  index: number
+  expanded: boolean
+  onToggle: () => void
+}) {
   const { updateItem, deleteItem, moveItem, addBullet, updateBullet, deleteBullet, moveBullet } = useResumeStore()
   const { start = '', end = '', ...regularFields } = item.fields
+  const primaryFields = Object.entries(regularFields).filter(([key]) => key !== 'description')
+  const detailFields = Object.entries(regularFields).filter(([key]) => key === 'description')
   const hasDates = Object.hasOwn(item.fields, 'start') || Object.hasOwn(item.fields, 'end')
   const isCurrent = end.toLowerCase() === 'present'
   const supportsDetails = section.type === 'custom'
+  const hasMoreDetails = detailFields.length > 0 || item.bullets.length > 0 || supportsDetails
+  const title = item.fields.position || item.fields.degree || item.fields.name || item.fields.company || item.fields.institution || 'New entry'
+  const subtitle = [
+    item.fields.company !== title ? item.fields.company : '',
+    item.fields.institution !== title ? item.fields.institution : '',
+    item.fields.category,
+    item.fields.location,
+    !item.fields.company && !item.fields.institution && item.fields.start
+      ? [item.fields.start, item.fields.end].filter(Boolean).map(formatResumeDate).join(' – ')
+      : '',
+  ].filter(Boolean).join(' · ')
   const startDate = toDateFromResumeValue(start)
   const endDate = isCurrent ? undefined : toDateFromResumeValue(end)
   const range: DateRange | undefined = startDate || endDate
@@ -116,30 +135,89 @@ function EntryEditor({ section, item, index }: { section: ResumeSection; item: R
   }
 
   return (
-    <div className="entry-card">
+    <div className={`entry-card ${expanded ? 'entry-card-expanded' : ''}`}>
       <div className="entry-topline">
-        <span className="entry-index">{String(index + 1).padStart(2, '0')}</span>
-        <span className="entry-title">{item.fields.position || item.fields.degree || item.fields.name || 'New entry'}</span>
+        <Button
+          variant="ghost"
+          className="entry-disclosure"
+          type="button"
+          aria-expanded={expanded}
+          aria-label={`${expanded ? 'Collapse' : 'Edit'} ${title}`}
+          onClick={onToggle}
+        >
+          <span className="entry-index">{String(index + 1).padStart(2, '0')}</span>
+          <span className="entry-summary">
+            <span className="entry-title">{title}</span>
+            {subtitle && <small>{subtitle}</small>}
+          </span>
+          {expanded ? <ChevronDown size={15} /> : <ChevronRight size={15} />}
+        </Button>
         <MiniButton title="Move up" disabled={index === 0} onClick={() => moveItem(section.id, item.id, -1)}><ArrowUp size={14} /></MiniButton>
         <MiniButton title="Move down" disabled={index === section.items.length - 1} onClick={() => moveItem(section.id, item.id, 1)}><ArrowDown size={14} /></MiniButton>
         <MiniButton title="Delete entry" danger onClick={() => deleteItem(section.id, item.id)}><Trash2 size={14} /></MiniButton>
       </div>
-      <div className="form-grid">
-        {Object.entries(regularFields).map(([key, value]) => (
-          <Field
-            key={key}
-            label={FIELD_LABELS[key] ?? key}
-            value={value}
-            multiline={key === 'description'}
-            onChange={(next) => updateItem(section.id, item.id, { fields: { ...item.fields, [key]: next } })}
+      {expanded && <div className="entry-editor-fields">
+        <div className="form-grid">
+          {primaryFields.map(([key, value]) => (
+            <Field
+              key={key}
+              label={FIELD_LABELS[key] ?? key}
+              value={value}
+              onChange={(next) => updateItem(section.id, item.id, { fields: { ...item.fields, [key]: next } })}
+            />
+          ))}
+        </div>
+        {hasDates && <div className="entry-date-fields">
+          <DateRangePicker
+            range={range}
+            setRange={(nextRange) => updateDates({
+              start: nextRange?.from ? format(nextRange.from, 'yyyy-MM-dd') : '',
+              end: nextRange?.to
+                ? format(nextRange.to, 'yyyy-MM-dd')
+                : nextRange?.from && isCurrent ? 'Present' : '',
+            })}
           />
-        ))}
-        {supportsDetails && <div className="field-wide">
-          <div className="subsection-title"><span>Custom details</span><Button variant="link" size="sm" className="text-action" type="button" onClick={() => updateItem(section.id, item.id, {
-            details: [...item.details, { id: crypto.randomUUID(), label: '', content: '' }],
-          })}><Plus size={13} /> Add detail</Button></div>
-          {item.details.map((detail) => (
-            <div className="form-grid" key={detail.id}>
+          {(start && !startDate || end && !isCurrent && !endDate) && (
+            <small className="date-legacy-note">Saved date values could not be recognized. Choose a range to replace them.</small>
+          )}
+          <label className="current-date-toggle">
+            <Checkbox checked={isCurrent} onCheckedChange={(checked) => updateDates({ end: checked ? 'Present' : '' })} />
+            <span>Ongoing / present</span>
+          </label>
+          <div className="entry-date-actions">
+            <Button variant="link" size="sm" className="text-action" type="button" onClick={removeDates}><X size={13} /> Remove dates</Button>
+          </div>
+        </div>}
+        {!hasDates && <div className="entry-date-actions">
+          <Button variant="link" size="sm" className="text-action" type="button" onClick={() => updateDates({ start: '', end: '' })}><Plus size={13} /> Add date range</Button>
+        </div>}
+        {hasMoreDetails && <details className="editor-disclosure entry-more-details">
+          <summary>
+            <span><strong>More details</strong><small>{[
+              detailFields.length ? 'description' : '',
+              item.bullets.length ? `${item.bullets.filter(Boolean).length} achievements` : '',
+              supportsDetails && item.details.length ? `${item.details.length} custom details` : '',
+            ].filter(Boolean).join(' · ') || 'Add achievements or context'}</small></span>
+            <ChevronDown size={15} />
+          </summary>
+          <div className="entry-more-content">
+            {detailFields.length > 0 && <div className="form-grid">
+              {detailFields.map(([key, value]) => (
+                <Field
+                  key={key}
+                  label={FIELD_LABELS[key] ?? key}
+                  value={value}
+                  multiline
+                  onChange={(next) => updateItem(section.id, item.id, { fields: { ...item.fields, [key]: next } })}
+                />
+              ))}
+            </div>}
+            {supportsDetails && <div className="field-wide">
+              <div className="subsection-title"><span>Custom details</span><Button variant="link" size="sm" className="text-action" type="button" onClick={() => updateItem(section.id, item.id, {
+                details: [...item.details, { id: crypto.randomUUID(), label: '', content: '' }],
+              })}><Plus size={13} /> Add detail</Button></div>
+              {item.details.map((detail) => (
+                <div className="form-grid" key={detail.id}>
               <Field
                 label="Detail title (optional)"
                 value={detail.label}
@@ -159,71 +237,63 @@ function EntryEditor({ section, item, index }: { section: ResumeSection; item: R
               <MiniButton title="Remove detail" danger onClick={() => updateItem(section.id, item.id, {
                 details: item.details.filter((entry) => entry.id !== detail.id),
               })}><X size={13} /></MiniButton>
+                </div>
+              ))}
+            </div>}
+            <div className="bullet-editor">
+              <div className="subsection-title"><span>Achievements</span><Button variant="link" size="sm" className="text-action" type="button" onClick={() => addBullet(section.id, item.id)}><Plus size={13} /> Add achievement</Button></div>
+              {item.bullets.map((bullet, bulletIndex) => (
+                <div className="bullet-edit-row" key={`${item.id}-${bulletIndex}`}>
+                  <span className="bullet-dot">•</span>
+                  <Input value={bullet} placeholder="Describe an impact or achievement" onChange={(event) => updateBullet(section.id, item.id, bulletIndex, event.target.value)} />
+                  <MiniButton title="Move bullet up" disabled={bulletIndex === 0} onClick={() => moveBullet(section.id, item.id, bulletIndex, -1)}><ArrowUp size={13} /></MiniButton>
+                  <MiniButton title="Move bullet down" disabled={bulletIndex === item.bullets.length - 1} onClick={() => moveBullet(section.id, item.id, bulletIndex, 1)}><ArrowDown size={13} /></MiniButton>
+                  <MiniButton title="Remove bullet" danger onClick={() => deleteBullet(section.id, item.id, bulletIndex)}><X size={13} /></MiniButton>
+                </div>
+              ))}
             </div>
-          ))}
-        </div>}
-        {hasDates && <>
-          <DateRangePicker
-            range={range}
-            setRange={(nextRange) => updateDates({
-              start: nextRange?.from ? format(nextRange.from, 'yyyy-MM-dd') : '',
-              end: nextRange?.to
-                ? format(nextRange.to, 'yyyy-MM-dd')
-                : nextRange?.from && isCurrent ? 'Present' : '',
-            })}
-          />
-          {(start && !startDate || end && !isCurrent && !endDate) && (
-            <small className="date-legacy-note">Saved date values could not be recognized. Choose a range to replace them.</small>
-          )}
-          <label className="current-date-toggle">
-            <Checkbox checked={isCurrent} onCheckedChange={(checked) => updateDates({ end: checked ? 'Present' : '' })} />
-            <span>Ongoing / present</span>
-          </label>
-        </>}
-      </div>
-      <div className="entry-date-actions">
-        {hasDates
-          ? <Button variant="link" size="sm" className="text-action" type="button" onClick={removeDates}><X size={13} /> Remove dates</Button>
-          : <Button variant="link" size="sm" className="text-action" type="button" onClick={() => updateDates({ start: '', end: '' })}><Plus size={13} /> Add date range</Button>}
-      </div>
-      <div className="bullet-editor">
-        <div className="subsection-title"><span>Bullet points</span><Button variant="link" size="sm" className="text-action" type="button" onClick={() => addBullet(section.id, item.id)}><Plus size={13} /> Add bullet</Button></div>
-        {item.bullets.map((bullet, bulletIndex) => (
-          <div className="bullet-edit-row" key={`${item.id}-${bulletIndex}`}>
-            <span className="bullet-dot">•</span>
-            <Input value={bullet} placeholder="Describe an impact or achievement" onChange={(event) => updateBullet(section.id, item.id, bulletIndex, event.target.value)} />
-            <MiniButton title="Move bullet up" disabled={bulletIndex === 0} onClick={() => moveBullet(section.id, item.id, bulletIndex, -1)}><ArrowUp size={13} /></MiniButton>
-            <MiniButton title="Move bullet down" disabled={bulletIndex === item.bullets.length - 1} onClick={() => moveBullet(section.id, item.id, bulletIndex, 1)}><ArrowDown size={13} /></MiniButton>
-            <MiniButton title="Remove bullet" danger onClick={() => deleteBullet(section.id, item.id, bulletIndex)}><X size={13} /></MiniButton>
           </div>
-        ))}
-      </div>
+        </details>}
+      </div>}
     </div>
   )
 }
 
 function ListSectionEditor({ section }: { section: ResumeSection }) {
   const { updateSubsection, addSubsection, deleteSubsection, moveSubsection, addListItem, updateListItem, deleteListItem, moveListItem } = useResumeStore()
+  const [expandedSubsection, setExpandedSubsection] = useState<string | null>(null)
   return (
     <div className="subsections">
       {section.subsections.map((subsection, index) => (
-        <div className="subsection-editor" key={subsection.id}>
+        <div className={`subsection-editor ${expandedSubsection === subsection.id ? 'expanded' : ''}`} key={subsection.id}>
           <div className="subsection-heading-edit">
-            <Input aria-label="Subsection heading" value={subsection.heading} onChange={(event) => updateSubsection(section.id, subsection.id, { heading: event.target.value })} />
+            <Button
+              variant="ghost"
+              className="subsection-disclosure"
+              type="button"
+              aria-expanded={expandedSubsection === subsection.id}
+              onClick={() => setExpandedSubsection(expandedSubsection === subsection.id ? null : subsection.id)}
+            >
+              <span><strong>{subsection.heading || 'Untitled group'}</strong><small>{subsection.items.length} {subsection.items.length === 1 ? 'item' : 'items'}</small></span>
+              {expandedSubsection === subsection.id ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
+            </Button>
             <MiniButton title="Move subsection up" disabled={index === 0} onClick={() => moveSubsection(section.id, subsection.id, -1)}><ArrowUp size={13} /></MiniButton>
             <MiniButton title="Move subsection down" disabled={index === section.subsections.length - 1} onClick={() => moveSubsection(section.id, subsection.id, 1)}><ArrowDown size={13} /></MiniButton>
             <MiniButton title="Delete subsection" danger onClick={() => deleteSubsection(section.id, subsection.id)}><Trash2 size={14} /></MiniButton>
           </div>
-          {subsection.items.map((item, index) => (
-            <div className="list-edit-row" key={`${subsection.id}-${index}`}>
-              <span className="bullet-dot">•</span>
-              <Input value={item} placeholder="Add information" onChange={(event) => updateListItem(section.id, subsection.id, index, event.target.value)} />
-              <MiniButton title="Move up" disabled={index === 0} onClick={() => moveListItem(section.id, subsection.id, index, -1)}><ArrowUp size={13} /></MiniButton>
-              <MiniButton title="Move down" disabled={index === subsection.items.length - 1} onClick={() => moveListItem(section.id, subsection.id, index, 1)}><ArrowDown size={13} /></MiniButton>
-              <MiniButton title="Remove item" danger onClick={() => deleteListItem(section.id, subsection.id, index)}><X size={13} /></MiniButton>
-            </div>
-          ))}
-          <Button variant="link" size="sm" className="text-action add-list-item" type="button" onClick={() => addListItem(section.id, subsection.id)}><Plus size={13} /> Add item</Button>
+          {expandedSubsection === subsection.id && <div className="subsection-items">
+            <Input aria-label="Subsection heading" value={subsection.heading} onChange={(event) => updateSubsection(section.id, subsection.id, { heading: event.target.value })} />
+            {subsection.items.map((item, index) => (
+              <div className="list-edit-row" key={`${subsection.id}-${index}`}>
+                <span className="bullet-dot">•</span>
+                <Input value={item} placeholder="Add information" onChange={(event) => updateListItem(section.id, subsection.id, index, event.target.value)} />
+                <MiniButton title="Move up" disabled={index === 0} onClick={() => moveListItem(section.id, subsection.id, index, -1)}><ArrowUp size={13} /></MiniButton>
+                <MiniButton title="Move down" disabled={index === subsection.items.length - 1} onClick={() => moveListItem(section.id, subsection.id, index, 1)}><ArrowDown size={13} /></MiniButton>
+                <MiniButton title="Remove item" danger onClick={() => deleteListItem(section.id, subsection.id, index)}><X size={13} /></MiniButton>
+              </div>
+            ))}
+            <Button variant="link" size="sm" className="text-action add-list-item" type="button" onClick={() => addListItem(section.id, subsection.id)}><Plus size={13} /> Add item</Button>
+          </div>}
         </div>
       ))}
       <Button variant="outline" className="outline-action" type="button" onClick={() => addSubsection(section.id)}><Plus size={14} /> Add subsection</Button>
@@ -237,11 +307,13 @@ function ContentSidebar({ active, setActive, dragId, setDragId }: {
   const resume = useResumeStore((state) => state.resume)
   const store = useResumeStore()
   const [newHeading, setNewHeading] = useState('')
+  const [expandedEntryId, setExpandedEntryId] = useState<string | null>(null)
   const profile = resume.profile
   const accordionListRef = useRef<HTMLDivElement>(null)
   const sectionRefs = useRef(new Map<string, HTMLElement>())
 
   useEffect(() => {
+    setExpandedEntryId(null)
     if (!active || active === 'profile') return
     const list = accordionListRef.current
     const section = sectionRefs.current.get(active)
@@ -275,6 +347,7 @@ function ContentSidebar({ active, setActive, dragId, setDragId }: {
         <div><span className="eyebrow">YOUR DOCUMENT</span><h2>Content</h2></div>
         <span className="saved-pill"><Check size={12} /> Saved locally</span>
       </div>
+      {!active && <p className="editor-hint">Choose a section below or click it in your preview to start editing.</p>}
       <div className="accordion-list" ref={accordionListRef}>
         <section className={`accordion ${active === 'profile' ? 'open' : ''}`}>
           <Button variant="ghost" className="accordion-trigger" type="button" onClick={() => setActive(active === 'profile' ? '' : 'profile')}>
@@ -285,25 +358,30 @@ function ContentSidebar({ active, setActive, dragId, setDragId }: {
             <div className="form-grid">
               <Field label="Full name" value={profile.name} onChange={(value) => store.updateProfile('name', value)} />
               <Field label="Professional title" value={profile.title} onChange={(value) => store.updateProfile('title', value)} />
-              <Field label="Email" value={profile.email} onChange={(value) => store.updateProfile('email', value)} />
-              <Field label="Phone" value={profile.phone} onChange={(value) => store.updateProfile('phone', value)} />
-              <Field label="Location" value={profile.location} onChange={(value) => store.updateProfile('location', value)} />
-              <Field label="LinkedIn" value={profile.linkedin} onChange={(value) => store.updateProfile('linkedin', value)} />
-              <Field label="Portfolio" value={profile.portfolio} onChange={(value) => store.updateProfile('portfolio', value)} />
-              <label className="summary-toggle">
-                <span><strong>Clickable hyperlinks</strong><small>Link email, phone, LinkedIn & portfolio</small></span>
-                <Checkbox checked={profile.hyperlinksEnabled} onCheckedChange={(checked) => store.updateProfile('hyperlinksEnabled', checked)} />
-              </label>
-              <label className="field field-wide"><span>Profile photo (optional)</span><input type="file" accept="image/*" onChange={(event) => {
-                const file = event.target.files?.[0]
-                if (!file) return
-                const reader = new FileReader()
-                reader.onload = () => store.updateProfile('photo', String(reader.result ?? ''))
-                reader.onerror = () => window.alert('The selected image could not be read.')
-                reader.readAsDataURL(file)
-              }} /></label>
-              {profile.photo && <Button variant="link" size="sm" className="text-action" type="button" onClick={() => store.updateProfile('photo', '')}><X size={13} /> Remove photo</Button>}
             </div>
+            <details className="editor-disclosure profile-contact-details">
+              <summary><span><strong>Contact & profile details</strong><small>Email, links, location and photo</small></span><ChevronDown size={15} /></summary>
+              <div className="form-grid">
+                <Field label="Email" value={profile.email} onChange={(value) => store.updateProfile('email', value)} />
+                <Field label="Phone" value={profile.phone} onChange={(value) => store.updateProfile('phone', value)} />
+                <Field label="Location" value={profile.location} onChange={(value) => store.updateProfile('location', value)} />
+                <Field label="LinkedIn" value={profile.linkedin} onChange={(value) => store.updateProfile('linkedin', value)} />
+                <Field label="Portfolio" value={profile.portfolio} onChange={(value) => store.updateProfile('portfolio', value)} />
+                <label className="summary-toggle">
+                  <span><strong>Clickable hyperlinks</strong><small>Link email, phone, LinkedIn & portfolio</small></span>
+                  <Checkbox checked={profile.hyperlinksEnabled} onCheckedChange={(checked) => store.updateProfile('hyperlinksEnabled', checked)} />
+                </label>
+                <label className="field field-wide"><span>Profile photo (optional)</span><input type="file" accept="image/*" onChange={(event) => {
+                  const file = event.target.files?.[0]
+                  if (!file) return
+                  const reader = new FileReader()
+                  reader.onload = () => store.updateProfile('photo', String(reader.result ?? ''))
+                  reader.onerror = () => window.alert('The selected image could not be read.')
+                  reader.readAsDataURL(file)
+                }} /></label>
+                {profile.photo && <Button variant="link" size="sm" className="text-action" type="button" onClick={() => store.updateProfile('photo', '')}><X size={13} /> Remove photo</Button>}
+              </div>
+            </details>
           </div>}
         </section>
         <div className="section-list-heading"><span>RESUME SECTIONS</span><span className="drag-hint"><GripVertical size={13} /> Drag to reorder</span></div>
@@ -351,7 +429,14 @@ function ContentSidebar({ active, setActive, dragId, setDragId }: {
                   <div className="count-row"><span>{profile.summary.length} characters</span><span>{profile.summary.trim() ? profile.summary.trim().split(/\s+/).length : 0} words</span></div>
                 </>
                 : <>
-                  {section.items.map((item, itemIndex) => <EntryEditor key={item.id} section={section} item={item} index={itemIndex} />)}
+                  {section.items.map((item, itemIndex) => <EntryEditor
+                    key={item.id}
+                    section={section}
+                    item={item}
+                    index={itemIndex}
+                    expanded={expandedEntryId === item.id}
+                    onToggle={() => setExpandedEntryId(expandedEntryId === item.id ? null : item.id)}
+                  />)}
                   <Button variant="outline" className="outline-action" type="button" onClick={() => store.addItem(section.id)}><Plus size={14} /> Add {section.type === 'education' ? 'education' : section.type === 'experience' ? 'position' : 'entry'}</Button>
                   <div className="subsections"><ListSectionEditor section={section} /></div>
                 </>}
@@ -876,7 +961,7 @@ function App() {
   const [theme, setTheme] = useState<'light' | 'dark'>(() => (
     localStorage.getItem('folio-theme') === 'dark' ? 'dark' : 'light'
   ))
-  const [activeSection, setActiveSection] = useState('profile')
+  const [activeSection, setActiveSection] = useState('')
   const [zoom, setZoom] = useState(82)
   const [editorMode, setEditorMode] = useState<'dashboard' | 'content' | 'templates' | 'design' | 'ats' | 'settings'>('content')
   const [mobileView, setMobileView] = useState<'edit' | 'preview'>('edit')
