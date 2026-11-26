@@ -422,7 +422,6 @@ function ContentSidebar({ active, setActive, dragId, setDragId }: {
           <section
             className={`accordion section-accordion section-card ${active === section.id ? 'open selected' : ''} ${section.enabled ? '' : 'disabled'}`}
             key={section.id}
-            style={{ '--section-accent': resume.settings.accentColor } as React.CSSProperties}
             ref={(element) => {
               if (element) sectionRefs.current.set(section.id, element)
               else sectionRefs.current.delete(section.id)
