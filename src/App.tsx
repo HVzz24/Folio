@@ -2,7 +2,7 @@ import { Fragment, useEffect, useMemo, useRef, useState } from 'react'
 import {
   AlignCenter, AlignJustify, AlignLeft, ArrowDown, ArrowDownToLine, ArrowLeft, ArrowRight, ArrowUp, BriefcaseBusiness, Check, ClipboardPaste,
   ChevronDown, ChevronRight, Eye, EyeOff, FileJson2, FileText, FolderKanban, GraduationCap, GripVertical,
-  LayoutGrid, Maximize2, Minus, Moon, Plus, Printer, RotateCcw, Settings2, Sparkles, Sun,
+  LayoutGrid, Maximize2, Minus, Moon, PanelLeftClose, PanelLeftOpen, Plus, Printer, RotateCcw, Settings2, Sparkles, Sun,
   ListChecks, Trash2, Type, Upload, X,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -993,6 +993,7 @@ function App() {
   const [activeSection, setActiveSection] = useState('')
   const [zoom, setZoom] = useState(82)
   const [editorMode, setEditorMode] = useState<'dashboard' | 'content' | 'templates' | 'design' | 'ats' | 'settings'>('content')
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(() => localStorage.getItem('folio-sidebar-collapsed') === 'true')
   const [mobileView, setMobileView] = useState<'edit' | 'preview'>('edit')
   const [dragId, setDragId] = useState<string | null>(null)
   const [importError, setImportError] = useState('')
@@ -1031,6 +1032,10 @@ function App() {
   useEffect(() => {
     localStorage.setItem('folio-theme', theme)
   }, [theme])
+
+  useEffect(() => {
+    localStorage.setItem('folio-sidebar-collapsed', String(sidebarCollapsed))
+  }, [sidebarCollapsed])
 
   async function importFile(file?: File) {
     if (!file) return
@@ -1137,20 +1142,32 @@ function App() {
           <Button variant={mobileView === 'preview' ? 'secondary' : 'ghost'} size="sm" type="button" aria-pressed={mobileView === 'preview'} onClick={() => setMobileView('preview')}>Preview</Button>
         </div>
       </div>
-      <div className="studio-body no-print">
+      <div className="studio-body no-print" data-sidebar-collapsed={sidebarCollapsed}>
         <aside className="studio-nav" aria-label="Main navigation">
-          <div className="brand"><div className="brand-mark">f.</div><div><strong>folio</strong><span>RESUME STUDIO</span></div></div>
+          <div className="studio-nav-header">
+            <div className="brand"><div className="brand-mark">f.</div><div><strong>folio</strong><span>RESUME STUDIO</span></div></div>
+            <button
+              className="studio-nav-collapse"
+              type="button"
+              aria-label={sidebarCollapsed ? 'Expand navigation' : 'Collapse navigation'}
+              aria-expanded={!sidebarCollapsed}
+              title={sidebarCollapsed ? 'Expand navigation' : 'Collapse navigation'}
+              onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
+            >
+              {sidebarCollapsed ? <PanelLeftOpen size={17} /> : <PanelLeftClose size={17} />}
+            </button>
+          </div>
           <div className="studio-nav-section">
             <span className="studio-nav-label">WORKSPACE</span>
-            <button className={`studio-nav-item ${editorMode === 'dashboard' ? 'selected' : ''}`} type="button" onClick={() => { setEditorMode('dashboard'); setMobileView('edit') }}><LayoutGrid size={17} /><span>Dashboard</span></button>
-            <button className={`studio-nav-item ${editorMode === 'content' || editorMode === 'ats' ? 'selected' : ''}`} type="button" onClick={() => { setEditorMode('content'); setMobileView('edit') }}><FileText size={17} /><span>My Resume</span></button>
-            <button className={`studio-nav-item ${editorMode === 'templates' ? 'selected' : ''}`} type="button" onClick={() => { setEditorMode('templates'); setMobileView('edit') }}><LayoutGrid size={17} /><span>Templates</span></button>
+            <button className={`studio-nav-item ${editorMode === 'dashboard' ? 'selected' : ''}`} type="button" aria-label="Dashboard" title="Dashboard" data-tooltip="Dashboard" onClick={() => { setEditorMode('dashboard'); setMobileView('edit') }}><LayoutGrid size={17} /><span>Dashboard</span></button>
+            <button className={`studio-nav-item ${editorMode === 'content' || editorMode === 'ats' ? 'selected' : ''}`} type="button" aria-label="My Resume" title="My Resume" data-tooltip="My Resume" onClick={() => { setEditorMode('content'); setMobileView('edit') }}><FileText size={17} /><span>My Resume</span></button>
+            <button className={`studio-nav-item ${editorMode === 'templates' ? 'selected' : ''}`} type="button" aria-label="Templates" title="Templates" data-tooltip="Templates" onClick={() => { setEditorMode('templates'); setMobileView('edit') }}><LayoutGrid size={17} /><span>Templates</span></button>
           </div>
           <div className="studio-nav-section">
             <span className="studio-nav-label">DOCUMENT</span>
-            <button className={`studio-nav-item ${editorMode === 'design' ? 'selected' : ''}`} type="button" onClick={() => { setEditorMode('design'); setMobileView('edit') }}><Sun size={17} /><span>Theme</span></button>
-            <button className="studio-nav-item" type="button" onClick={() => printResume(resume.settings)}><ArrowDownToLine size={17} /><span>Export</span></button>
-            <button className={`studio-nav-item ${editorMode === 'settings' ? 'selected' : ''}`} type="button" onClick={() => { setEditorMode('settings'); setMobileView('edit') }}><Settings2 size={17} /><span>Settings</span></button>
+            <button className={`studio-nav-item ${editorMode === 'design' ? 'selected' : ''}`} type="button" aria-label="Theme" title="Theme" data-tooltip="Theme" onClick={() => { setEditorMode('design'); setMobileView('edit') }}><Sun size={17} /><span>Theme</span></button>
+            <button className="studio-nav-item" type="button" aria-label="Export" title="Export" data-tooltip="Export" onClick={() => printResume(resume.settings)}><ArrowDownToLine size={17} /><span>Export</span></button>
+            <button className={`studio-nav-item ${editorMode === 'settings' ? 'selected' : ''}`} type="button" aria-label="Settings" title="Settings" data-tooltip="Settings" onClick={() => { setEditorMode('settings'); setMobileView('edit') }}><Settings2 size={17} /><span>Settings</span></button>
           </div>
         </aside>
         <div className="workspace" data-mode={editorMode} data-mobile-view={mobileView}>
