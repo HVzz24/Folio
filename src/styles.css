@@ -965,13 +965,16 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-
 .studio-body[data-sidebar-collapsed="true"] .studio-nav-item:focus-visible::after { transform: translate(0, -50%); opacity: 1; }
 .workspace {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(340px, 370px);
+  grid-template-columns: minmax(0, 1fr) var(--editor-panel-width, 360px);
   min-width: 0;
   min-height: 0;
   overflow: hidden;
+  transition: grid-template-columns 180ms ease;
 }
+.workspace[data-resizing="true"] { transition: none; }
 .workspace .preview-workspace { grid-column: 1; grid-row: 1; min-height: 0; height: 100%; }
 .editor-panel {
+  position: relative;
   grid-column: 2;
   grid-row: 1;
   display: flex;
@@ -979,9 +982,39 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-
   min-width: 0;
   min-height: 0;
   overflow: hidden;
+  padding-left: 8px;
   border-left: 1px solid #e8ebed;
   background: #fff;
 }
+.editor-panel-resize-handle {
+  position: absolute;
+  z-index: 4;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  width: 8px;
+  cursor: col-resize;
+  touch-action: none;
+  user-select: none;
+}
+.editor-panel-resize-handle::before {
+  position: absolute;
+  top: 50%;
+  left: 3px;
+  width: 2px;
+  height: 34px;
+  transform: translateY(-50%);
+  border-radius: 2px;
+  background: #dce3de;
+  content: "";
+  transition: height 140ms ease, background-color 140ms ease, box-shadow 140ms ease;
+}
+.editor-panel-resize-handle:hover::before,
+.editor-panel-resize-handle:focus-visible::before { height: 48px; background: #809d86; }
+.editor-panel-resize-handle:focus-visible { outline: none; }
+body.resizing-editor-panel,
+body.resizing-editor-panel * { cursor: col-resize !important; user-select: none !important; }
+body.resizing-editor-panel .editor-panel-resize-handle::before { height: 54px; background: var(--primary, #557a5f); box-shadow: 0 0 0 3px #557a5f20; }
 .editor-panel-tabs {
   display: grid;
   grid-template-columns: 1fr 1.2fr 1fr;
@@ -1074,6 +1107,10 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-
 .app-shell[data-theme="dark"] .settings-panel,
 .app-shell[data-theme="dark"] .dashboard-panel,
 .app-shell[data-theme="dark"] .template-panel { border-color: var(--dark-border); background: var(--dark-panel); }
+.app-shell[data-theme="dark"] .editor-panel-resize-handle::before { background: #3a463d; }
+.app-shell[data-theme="dark"] .editor-panel-resize-handle:hover::before,
+.app-shell[data-theme="dark"] .editor-panel-resize-handle:focus-visible::before { background: #86a98b; }
+.app-shell[data-theme="dark"] body.resizing-editor-panel .editor-panel-resize-handle::before { background: #a1c6a5; box-shadow: 0 0 0 3px #a1c6a520; }
 .app-shell[data-theme="dark"] .studio-nav-header { border-color: var(--dark-border); }
 .app-shell[data-theme="dark"] .studio-nav-collapse { color: var(--dark-muted); }
 .app-shell[data-theme="dark"] .studio-nav-collapse:hover { border-color: var(--dark-border); background: #202a23; color: var(--dark-text); }
@@ -1111,7 +1148,7 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-
 @media (min-width: 721px) and (max-width: 1050px) {
   .studio-body { grid-template-columns: 256px minmax(0, 1fr); }
   .studio-body[data-sidebar-collapsed="true"] { grid-template-columns: 72px minmax(0, 1fr); }
-  .workspace { grid-template-columns: minmax(0, 1fr) minmax(310px, 340px); }
+  .workspace { grid-template-columns: minmax(0, 1fr) var(--editor-panel-width, 360px); }
 }
 
 @media (max-width: 720px) {
@@ -1151,7 +1188,8 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-
   .workspace[data-mobile-view="edit"] .preview-workspace { display: none; }
   .workspace[data-mobile-view="preview"] .editor-panel { display: none; }
   .workspace .preview-workspace { flex: 1; width: 100%; min-height: 0; }
-  .editor-panel { flex: 1; width: 100%; min-height: 0; border-left: 0; }
+  .editor-panel { flex: 1; width: 100%; min-height: 0; padding-left: 0; border-left: 0; }
+  .editor-panel-resize-handle { display: none; }
   .editor-panel-tabs { grid-template-columns: repeat(3, minmax(0, 1fr)); padding: 6px; }
   .editor-panel-tabs .ui-button { min-height: 38px; font-size: 9px; }
   .workspace .editor-panel > .content-sidebar,

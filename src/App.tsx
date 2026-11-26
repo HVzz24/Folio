@@ -1,4 +1,4 @@
-import { Fragment, useEffect, useMemo, useRef, useState } from 'react'
+import { Fragment, type CSSProperties, useEffect, useMemo, useRef, useState } from 'react'
 import {
   AlignCenter, AlignJustify, AlignLeft, ArrowDown, ArrowDownToLine, ArrowLeft, ArrowRight, ArrowUp, BriefcaseBusiness, Check, ClipboardPaste,
   ChevronDown, ChevronRight, Eye, EyeOff, FileJson2, FileText, FolderKanban, GraduationCap, GripVertical,
@@ -34,6 +34,10 @@ const RESUME_COLORS = [
   { name: 'Terracotta', value: '#99513d' },
   { name: 'Charcoal', value: '#263238' },
 ]
+
+const EDITOR_PANEL_MIN_WIDTH = 320
+const EDITOR_PANEL_MAX_WIDTH = 600
+const EDITOR_PANEL_DEFAULT_WIDTH = 360
 
 const RESUME_TEMPLATES: { name: string; description: string; settings: Partial<Resume['settings']> }[] = [
   {
@@ -994,6 +998,15 @@ function App() {
   const [zoom, setZoom] = useState(82)
   const [editorMode, setEditorMode] = useState<'dashboard' | 'content' | 'templates' | 'design' | 'ats' | 'settings'>('content')
   const [sidebarCollapsed, setSidebarCollapsed] = useState(() => localStorage.getItem('folio-sidebar-collapsed') === 'true')
+  const [editorPanelWidth, setEditorPanelWidth] = useState(() => {
+    const savedWidth = localStorage.getItem('folio-editor-panel-width')
+    if (savedWidth === null) return EDITOR_PANEL_DEFAULT_WIDTH
+    const parsedWidth = Number(savedWidth)
+    return Number.isFinite(parsedWidth)
+      ? Math.min(EDITOR_PANEL_MAX_WIDTH, Math.max(EDITOR_PANEL_MIN_WIDTH, parsedWidth))
+      : EDITOR_PANEL_DEFAULT_WIDTH
+  })
+  const [isResizingPanel, setIsResizingPanel] = useState(false)
   const [mobileView, setMobileView] = useState<'edit' | 'preview'>('edit')
   const [dragId, setDragId] = useState<string | null>(null)
   const [importError, setImportError] = useState('')
@@ -1003,6 +1016,7 @@ function App() {
   const [markdownDraft, setMarkdownDraft] = useState(() => sessionStorage.getItem('folio-markdown-draft') ?? '')
   const fileInput = useRef<HTMLInputElement>(null)
   const previewRef = useRef<HTMLDivElement>(null)
+  const panelResizeRef = useRef<{ pointerId: number; startX: number; startWidth: number } | null>(null)
 
   function fitPreview() {
     const pageWidthMm = resume.settings.pageSize === 'A4' ? 210 : 215.9
@@ -1036,6 +1050,54 @@ function App() {
   useEffect(() => {
     localStorage.setItem('folio-sidebar-collapsed', String(sidebarCollapsed))
   }, [sidebarCollapsed])
+
+  useEffect(() => {
+    localStorage.setItem('folio-editor-panel-width', String(editorPanelWidth))
+  }, [editorPanelWidth])
+
+  useEffect(() => () => {
+    document.body.classList.remove('resizing-editor-panel')
+  }, [])
+
+  function startPanelResize(event: React.PointerEvent<HTMLDivElement>) {
+    if (event.button !== 0) return
+    event.preventDefault()
+    panelResizeRef.current = {
+      pointerId: event.pointerId,
+      startX: event.clientX,
+      startWidth: editorPanelWidth,
+    }
+    event.currentTarget.setPointerCapture(event.pointerId)
+    document.body.classList.add('resizing-editor-panel')
+    setIsResizingPanel(true)
+  }
+
+  function movePanelResize(event: React.PointerEvent<HTMLDivElement>) {
+    const resize = panelResizeRef.current
+    if (!resize || resize.pointerId !== event.pointerId) return
+    setEditorPanelWidth(Math.min(
+      EDITOR_PANEL_MAX_WIDTH,
+      Math.max(EDITOR_PANEL_MIN_WIDTH, Math.round(resize.startWidth + resize.startX - event.clientX)),
+    ))
+  }
+
+  function stopPanelResize() {
+    if (!panelResizeRef.current) return
+    panelResizeRef.current = null
+    document.body.classList.remove('resizing-editor-panel')
+    setIsResizingPanel(false)
+  }
+
+  function adjustPanelWidth(event: React.KeyboardEvent<HTMLDivElement>) {
+    const step = event.shiftKey ? 40 : 10
+    const delta = event.key === 'ArrowLeft' ? step : event.key === 'ArrowRight' ? -step : 0
+    if (delta === 0) return
+    event.preventDefault()
+    setEditorPanelWidth((width) => Math.min(
+      EDITOR_PANEL_MAX_WIDTH,
+      Math.max(EDITOR_PANEL_MIN_WIDTH, width + delta),
+    ))
+  }
 
   async function importFile(file?: File) {
     if (!file) return
@@ -1170,7 +1232,13 @@ function App() {
             <button className={`studio-nav-item ${editorMode === 'settings' ? 'selected' : ''}`} type="button" aria-label="Settings" title="Settings" data-tooltip="Settings" onClick={() => { setEditorMode('settings'); setMobileView('edit') }}><Settings2 size={17} /><span>Settings</span></button>
           </div>
         </aside>
-        <div className="workspace" data-mode={editorMode} data-mobile-view={mobileView}>
+        <div
+          className="workspace"
+          data-mode={editorMode}
+          data-mobile-view={mobileView}
+          data-resizing={isResizingPanel}
+          style={{ '--editor-panel-width': `${editorPanelWidth}px` } as CSSProperties}
+        >
           <section className="preview-workspace">
             <div className="preview-toolbar">
               <div><span className="preview-label">LIVE PREVIEW</span><span className="preview-page"><FileText size={13} /> {resume.settings.pageSize} · Resume</span></div>
@@ -1188,6 +1256,22 @@ function App() {
             <div className="preview-footnote"><Check size={12} /> Changes save automatically <span>·</span> Export a PDF to share or print</div>
           </section>
           <aside className="editor-panel">
+            <div
+              className="editor-panel-resize-handle"
+              role="separator"
+              aria-label="Resize editor panel"
+              aria-orientation="vertical"
+              aria-valuemin={EDITOR_PANEL_MIN_WIDTH}
+              aria-valuemax={EDITOR_PANEL_MAX_WIDTH}
+              aria-valuenow={editorPanelWidth}
+              tabIndex={0}
+              onPointerDown={startPanelResize}
+              onPointerMove={movePanelResize}
+              onPointerUp={stopPanelResize}
+              onPointerCancel={stopPanelResize}
+              onLostPointerCapture={stopPanelResize}
+              onKeyDown={adjustPanelWidth}
+            />
             <div className="editor-panel-tabs" role="group" aria-label="Resume editing tools">
               <Button variant={editorMode === 'content' ? 'secondary' : 'ghost'} size="sm" type="button" aria-pressed={editorMode === 'content'} onClick={() => setEditorMode('content')}><FileText size={14} /><span>Edit section</span></Button>
               <Button variant={editorMode === 'design' ? 'secondary' : 'ghost'} size="sm" type="button" aria-pressed={editorMode === 'design'} onClick={() => setEditorMode('design')}><Settings2 size={14} /><span>Layout controls</span></Button>
