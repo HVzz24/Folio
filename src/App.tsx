@@ -1,9 +1,9 @@
 import { Fragment, useEffect, useMemo, useRef, useState } from 'react'
 import {
-  AlignCenter, AlignJustify, AlignLeft, ArrowDown, ArrowDownToLine, ArrowLeft, ArrowRight, ArrowUp, Check, ClipboardPaste,
-  ChevronDown, ChevronRight, Eye, EyeOff, FileJson2, FileText, GripVertical,
+  AlignCenter, AlignJustify, AlignLeft, ArrowDown, ArrowDownToLine, ArrowLeft, ArrowRight, ArrowUp, BriefcaseBusiness, Check, ClipboardPaste,
+  ChevronDown, ChevronRight, Eye, EyeOff, FileJson2, FileText, FolderKanban, GraduationCap, GripVertical,
   LayoutGrid, Maximize2, Minus, Moon, Plus, Printer, RotateCcw, Settings2, Sparkles, Sun,
-  Trash2, Type, Upload, X,
+  ListChecks, Trash2, Type, Upload, X,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
@@ -301,6 +301,35 @@ function ListSectionEditor({ section }: { section: ResumeSection }) {
   )
 }
 
+function getSectionCardKind(section: ResumeSection) {
+  if (section.type === 'summary') return 'Summary'
+  if (section.type === 'experience') return 'Experience'
+  if (section.type === 'education') return 'Education'
+  const heading = section.heading.toLowerCase()
+  if (heading.includes('project')) return 'Projects'
+  if (heading.includes('skill')) return 'Skills'
+  return 'Custom section'
+}
+
+function getSectionCardMeta(section: ResumeSection) {
+  const heading = section.heading.toLowerCase()
+  const entries = section.items.length
+  const listItems = section.subsections.reduce((total, subsection) => total + subsection.items.length, 0)
+  const groups = section.subsections.length
+  const plural = (count: number, singular: string, pluralForm = `${singular}s`) =>
+    `${count} ${count === 1 ? singular : pluralForm}`
+
+  if (section.type === 'summary') return section.enabled ? 'Summary statement' : 'Hidden from resume'
+  if (section.type === 'experience') return `${plural(entries, 'role')} · ${section.enabled ? 'On resume' : 'Hidden'}`
+  if (section.type === 'education') return `${plural(entries, 'school')} · ${section.enabled ? 'On resume' : 'Hidden'}`
+  if (heading.includes('project')) return `${plural(entries, 'project')} · ${section.enabled ? 'On resume' : 'Hidden'}`
+  if (heading.includes('skill')) return `${plural(listItems, 'skill')} · ${section.enabled ? 'On resume' : 'Hidden'}`
+  if (entries && groups) return `${plural(entries, 'entry')} · ${plural(groups, 'group')}`
+  if (entries) return `${plural(entries, 'entry')} · ${section.enabled ? 'On resume' : 'Hidden'}`
+  if (groups) return `${plural(groups, 'group')} · ${plural(listItems, 'item')}`
+  return section.enabled ? 'Ready to add content' : 'Hidden from resume'
+}
+
 function ContentSidebar({ active, setActive, dragId, setDragId }: {
   active: string; setActive: (id: string) => void; dragId: string | null; setDragId: (id: string | null) => void
 }) {
@@ -384,11 +413,12 @@ function ContentSidebar({ active, setActive, dragId, setDragId }: {
             </details>
           </div>}
         </section>
-        <div className="section-list-heading"><span>RESUME SECTIONS</span><span className="drag-hint"><GripVertical size={13} /> Drag to reorder</span></div>
+        <div className="section-list-heading"><span>Resume sections</span><span className="drag-hint"><GripVertical size={13} /> Drag to reorder</span></div>
         {resume.sections.map((section, index) => (
           <section
-            className={`accordion section-accordion ${active === section.id ? 'open' : ''}`}
+            className={`accordion section-accordion section-card ${active === section.id ? 'open selected' : ''} ${section.enabled ? '' : 'disabled'}`}
             key={section.id}
+            style={{ '--section-accent': resume.settings.accentColor } as React.CSSProperties}
             ref={(element) => {
               if (element) sectionRefs.current.set(section.id, element)
               else sectionRefs.current.delete(section.id)
@@ -407,19 +437,18 @@ function ContentSidebar({ active, setActive, dragId, setDragId }: {
                 }}
                 onDragEnd={() => setDragId(null)}
               ><GripVertical size={15} /></span>
-              <Button variant="ghost" className="accordion-trigger section-trigger" type="button" onClick={() => setActive(section.id)}>
-                <span className="accordion-name">{section.heading || 'Untitled section'}<small>{section.type === 'summary'
-                  ? 'Summary statement'
-                  : [
-                    section.items.length ? `${section.items.length} entries` : '',
-                    section.subsections.filter((subsection) => subsection.items.length > 0).length
-                      ? `${section.subsections.filter((subsection) => subsection.items.length > 0).length} groups · ${section.subsections.reduce((total, subsection) => total + subsection.items.length, 0)} items`
-                      : '',
-                  ].filter(Boolean).join(' · ') || '0 items'
-                }</small></span>
-                {active === section.id ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
+              <Button variant="ghost" className="accordion-trigger section-trigger" type="button" aria-expanded={active === section.id} onClick={() => setActive(section.id)}>
+                <span className="section-card-icon" aria-hidden="true">
+                  {section.type === 'summary' ? <FileText size={17} /> : section.type === 'experience' ? <BriefcaseBusiness size={17} /> : section.type === 'education' ? <GraduationCap size={17} /> : getSectionCardKind(section) === 'Projects' ? <FolderKanban size={17} /> : <ListChecks size={17} />}
+                </span>
+                <span className="section-card-copy">
+                  <span className="section-card-title">{section.heading || 'Untitled section'}</span>
+                  <span className="section-card-meta">{getSectionCardMeta(section)}</span>
+                </span>
+                <span className="section-card-kind">{getSectionCardKind(section)}</span>
+                {active === section.id ? <ChevronDown className="section-card-chevron" size={15} /> : <ChevronRight className="section-card-chevron" size={15} />}
               </Button>
-              <MiniButton title={section.enabled ? 'Hide section' : 'Show section'} onClick={() => toggleSection(section)}>{section.enabled ? <Eye size={15} /> : <EyeOff size={15} />}</MiniButton>
+              <MiniButton title={section.enabled ? 'Hide section' : 'Show section'} onClick={() => toggleSection(section)}>{section.enabled ? <Eye size={14} /> : <EyeOff size={14} />}</MiniButton>
             </div>
             {active === section.id && <div className="accordion-content section-content">
               <Field label="Section heading" value={section.heading} onChange={(value) => store.updateSection(section.id, { heading: value })} />
